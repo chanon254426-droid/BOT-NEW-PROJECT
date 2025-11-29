@@ -16,7 +16,7 @@ from myserver import server_on
 # ⚠️⚠️⚠️ แก้ไข: เอา Token บอทของคุณมาใส่ตรงนี้ ⚠️⚠️⚠️
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
 
-# API Key EasySlip
+# API Key EasySlip (ตัดช่องว่างให้แล้ว)
 EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 
 # ID ห้องต่างๆ
@@ -123,8 +123,7 @@ def save_used_slip(trans_ref):
     with open(SLIP_DB_FILE, "w") as f:
         json.dump(used_slips, f, indent=4)
 
-# 🔥 ระบบเช็คสลิป (รวมทุกฟีเจอร์)
-# 🔥 แก้ไข: ระบบเช็คสลิป (แก้บัคชื่อว่าง + เช็คเวลา)
+# 🔥 ระบบเช็คสลิป (แก้บัคชื่อว่าง + เช็คเวลา)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
@@ -139,7 +138,6 @@ def check_slip_easyslip(image_url):
         )
         
         data = response.json()
-        # print(f"Debug API Data: {data}") # เปิดบรรทัดนี้ถ้าอยากเห็นข้อมูลดิบ
         
         if response.status_code == 200 and data['status'] == 200:
             slip_data = data['data']
@@ -208,12 +206,12 @@ class TopupModal(discord.ui.Modal, title="เติมเงินเข้า�
         input_amount = self.amount.value
         embed = discord.Embed(
             title="🧾 ใบแจ้งการชำระเงิน (Invoice)",
-            description=f"กรุณาโอนเงินจำนวน **{input_amount} บาท** ผ่าน QR Code ด้านล่างนี้",
+            description=f"กรุณาโอนเงินจำนวน **{input_amount} บาท** ผ่าน QR Code ด้านล่าง",
             color=discord.Color.from_rgb(255, 215, 0)
         )
         embed.add_field(name="1. สแกน QR Code", value="ใช้แอปธนาคารสแกนได้ทันที", inline=False)
         embed.add_field(name="2. บันทึกสลิป", value="เมื่อโอนเสร็จให้บันทึกรูปสลิปไว้", inline=False)
-        embed.add_field(name="3. ยืนยันการเติมเงิน", value=f"👉 นำรูปสลิปไปส่งที่ห้อง <#{SLIP_CHANNEL_ID}>\n⚠️ **(ต้องส่งภายใน 5 นาทีหลังโอน)**", inline=False)
+        embed.add_field(name="3. ยืนยันการเติมเงิน", value=f"👉 นำรูปสลิปไปส่งที่ห้อง <#{SLIP_CHANNEL_ID}>\n⚠️ **(ต้องส่งภายใน 10 นาทีหลังโอน)**", inline=False)
         embed.set_footer(text=f"User: {interaction.user.name} | ระบบอัตโนมัติ 24 ชม.")
         embed.set_image(url=QR_CODE_URL)
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -304,7 +302,7 @@ async def on_message(message):
     if message.author.bot: return
 
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (AI Check)")
+        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Smart AI)")
         
         try:
             # 1. เช็คสลิป
@@ -333,11 +331,10 @@ async def on_message(message):
 
         except Exception as e:
             print(traceback.format_exc())
-            await status_msg.edit(content=f"⚠️ เกิดข้อผิดพลาด: `{str(e)}`")
+            await status_msg.edit(content=f"⚠️ ระบบ Error: `{str(e)}`")
 
     await bot.process_commands(message)
 
 server_on()
-# ⚠️⚠️⚠️ เปลี่ยนเป็น Token ของคุณ ⚠️⚠️⚠️
+# ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
-
