@@ -15,7 +15,7 @@ from myserver import server_on
 # =================================================================
 
 # ⚠️⚠️⚠️ แก้ไข: เอา Token บอทของคุณมาใส่ตรงนี้ ⚠️⚠️⚠️
-DISCORD_BOT_TOKEN = 'ใส่_TOKEN_บอท_ของคุณ_ตรงนี้' 
+DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
 
 # API Key EasySlip (ตัดช่องว่างให้แล้ว)
 EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
@@ -353,3 +353,4 @@ async def on_message(message):
 server_on()
 # ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
+
