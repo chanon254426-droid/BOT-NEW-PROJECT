@@ -6,8 +6,8 @@ import json
 import requests
 import io
 import traceback
-from datetime import datetime, timedelta
 import re # เพิ่ม regex เพื่อจัดการข้อความ
+from datetime import datetime, timedelta
 from myserver import server_on
 
 # =================================================================
@@ -165,32 +165,47 @@ def check_slip_easyslip(image_url):
                         break
                 if not name_matched:
                     return False, 0, None, f"❌ ชื่อผู้รับเงินในสลิปไม่ถูกต้อง (โอนให้: {receiver_name})"
+            else:
+                # ⚠️ ถ้าชื่อว่าง ให้ปล่อยผ่าน (Safe Pass)
+                print("⚠️ API ไม่ส่งชื่อผู้รับมา -> ข้ามการเช็คชื่อ")
 
-            # ⏰ 4. เช็คเวลา (Strict Mode: ห้ามเกิน 5 นาทีเด็ดขาด)
+            # ⏰ 4. เช็คเวลา (Strict Mode + Smart Parser)
             try:
                 # ดึงวันที่และเวลาจากสลิป
                 slip_date_str = f"{slip_data['date']} {slip_data['time']}"
                 
-                # ตัดเศษวินาทีออก (เช่น .123) เพื่อให้แปลงค่าง่าย
+                # 🧹 Clean Up Data (แก้บัค ISO Format & Timezone)
+                slip_date_str = slip_date_str.replace("T", " ").replace("Z", "")
+                if "+" in slip_date_str: 
+                    slip_date_str = slip_date_str.split("+")[0] # ตัด Timezone ออก
                 if "." in slip_date_str: 
-                    slip_date_str = slip_date_str.split(".")[0]
-                
+                    slip_date_str = slip_date_str.split(".")[0] # ตัดเสี้ยววินาทีออก
+                slip_date_str = slip_date_str.strip()
+
                 # แปลงเป็นเวลา
-                slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
-                
+                try:
+                    slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    # เผื่อ API ส่งมาแค่ YYYY-MM-DD
+                    slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d")
+
+                # ถ้าเป็นปี พ.ศ. ให้แปลง
+                if slip_dt.year > 2500:
+                    slip_dt = slip_dt.replace(year=slip_dt.year - 543)
+
                 # เวลาปัจจุบันของ Server (แปลงเป็นเวลาไทย +7)
                 now = datetime.utcnow() + timedelta(hours=7)
                 
                 # หาผลต่าง (นาที)
                 time_diff = (now - slip_dt).total_seconds() / 60
                 
-                print(f"Time Diff: {time_diff:.2f} mins (Allowed: 5 mins)")
+                print(f"Time Diff: {time_diff:.2f} mins")
                 
-                # ❌ สลิปเก่าเกิน 5 นาที -> ดีดออก (ตัดข้อความด้านหลังออกตามที่ขอ)
+                # ❌ สลิปเก่าเกิน 5 นาที
                 if time_diff > 5: 
                     return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว)"
                 
-                # ❌ สลิปอนาคตเกิน 5 นาที (กันคนโกงแก้นาฬิกา) -> ดีดออก
+                # ❌ สลิปอนาคต
                 if time_diff < -5:
                     return False, 0, None, f"❌ เวลาในสลิปผิดปกติ (อนาคต) โปรดตรวจสอบวันที่"
                 
@@ -325,7 +340,7 @@ async def on_message(message):
     if message.author.bot: return
 
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Strict Mode)")
+        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Ultra Robust)")
         
         try:
             # 1. เช็คสลิป
@@ -359,5 +374,5 @@ async def on_message(message):
     await bot.process_commands(message)
 
 server_on()
-# ⚠️⚠️⚠️ เปลี่ยนเป็น Token ของคุณ ⚠️⚠️⚠️
+# ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
