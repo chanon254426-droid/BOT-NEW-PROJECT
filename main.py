@@ -10,19 +10,21 @@ from datetime import datetime, timedelta
 from myserver import server_on
 
 # =================================================================
-# ⚙️ ตั้งค่าบอท
+# ⚙️ ส่วนที่ 1: ตั้งค่าบอท
 # =================================================================
 
-# ⚠️ แก้ไข: ใส่ Token บอท
+# ⚠️⚠️⚠️ แก้ไข: เอา Token บอทของคุณมาใส่ตรงนี้ ⚠️⚠️⚠️
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
 
-# API Key EasySlip
+# API Key EasySlip (ตัดช่องว่างให้แล้ว)
 EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 
+# ID ห้องต่างๆ
 SHOP_CHANNEL_ID = 1416797606180552714  
 SLIP_CHANNEL_ID = 1416797464350167090  
 ADMIN_LOG_ID = 1441466742885978144     
 
+# ลิงก์รูปภาพ
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 
@@ -96,7 +98,7 @@ def deduct_balance(user_id, amount):
         return True
     return False
 
-# --- เช็คสลิปซ้ำ ---
+# --- ระบบป้องกันสลิปซ้ำ ---
 def is_slip_used(trans_ref):
     if not os.path.exists(SLIP_DB_FILE): return False
     try:
@@ -117,7 +119,7 @@ def save_used_slip(trans_ref):
     with open(SLIP_DB_FILE, "w") as f:
         json.dump(used_slips, f, indent=4)
 
-# 🔥 แก้ไข: เช็คเวลา 5 นาที
+# 🔥 ระบบเช็คสลิป (เวลา + ซ้ำ + ยอดเงิน)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
@@ -140,21 +142,15 @@ def check_slip_easyslip(image_url):
             
             # ⏰ เช็คเวลา (ต้องไม่เกิน 5 นาที)
             try:
-                # รูปแบบ: 2025-11-29 14:30:25
                 slip_date_str = f"{slip_data['date']} {slip_data['time']}"
                 slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
-                
-                # เวลาปัจจุบัน (UTC+7 Thailand)
                 now = datetime.utcnow() + timedelta(hours=7)
-                
-                # หาผลต่างเวลา (นาที)
                 time_diff = (now - slip_dt).total_seconds() / 60
+                
                 print(f"Time Diff: {time_diff:.2f} mins")
                 
-                # 🔴 แก้ตรงนี้เป็น 5 นาที
                 if time_diff > 5: 
                     return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) ต้องส่งภายใน 5 นาทีหลังโอน"
-                    
             except Exception as e:
                 print(f"Time Check Error: {e}") 
                 pass
@@ -169,7 +165,7 @@ def check_slip_easyslip(image_url):
         return False, 0, None, str(e)
 
 # =================================================================
-# 🖥️ UI
+# 📝 หน้าต่างกรอกจำนวนเงิน (Modal)
 # =================================================================
 
 class TopupModal(discord.ui.Modal, title="เติมเงินเข้าระบบ (Top Up)"):
@@ -182,22 +178,29 @@ class TopupModal(discord.ui.Modal, title="เติมเงินเข้า�
 
     async def on_submit(self, interaction: discord.Interaction):
         input_amount = self.amount.value
+        
+        # สร้างใบแจ้งยอด (Invoice) แบบมืออาชีพ
         embed = discord.Embed(
             title="🧾 ใบแจ้งการชำระเงิน (Invoice)",
-            description=f"กรุณาโอนเงินจำนวน **{input_amount} บาท** ผ่าน QR Code ด้านล่าง",
+            description=f"กรุณาโอนเงินจำนวน **{input_amount} บาท** ผ่าน QR Code ด้านล่างนี้",
             color=discord.Color.from_rgb(255, 215, 0)
         )
         embed.add_field(name="1. สแกน QR Code", value="ใช้แอปธนาคารสแกนได้ทันที", inline=False)
         embed.add_field(name="2. บันทึกสลิป", value="เมื่อโอนเสร็จให้บันทึกรูปสลิปไว้", inline=False)
-        # 🔴 แจ้งลูกค้าว่า 5 นาที
-        embed.add_field(name="3. ยืนยันการเติมเงิน", value=f"นำรูปสลิปไปส่งที่ห้อง <#{SLIP_CHANNEL_ID}>\n**(ต้องส่งภายใน 5 นาทีหลังโอน)**", inline=False)
-        embed.set_footer(text="ระบบตรวจสลิปอัตโนมัติ 24 ชม.")
+        embed.add_field(name="3. ยืนยันการเติมเงิน", value=f"👉 นำรูปสลิปไปส่งที่ห้อง <#{SLIP_CHANNEL_ID}>\n⚠️ **(ต้องส่งภายใน 5 นาทีหลังโอน)**", inline=False)
+        embed.set_footer(text=f"User: {interaction.user.name} | ระบบอัตโนมัติ 24 ชม.")
         embed.set_image(url=QR_CODE_URL)
+
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+# =================================================================
+# 🖥️ UI หลัก
+# =================================================================
 
 class MainShopView(discord.ui.View):
     def __init__(self): super().__init__(timeout=None)
     
+    # ปุ่มเติมเงิน -> เรียก Modal
     @discord.ui.button(label="เติมเงิน (QR Code)", style=discord.ButtonStyle.primary, emoji="💳", row=0, custom_id="topup_btn")
     async def topup(self, interaction, button):
         await interaction.response.send_modal(TopupModal())
@@ -276,21 +279,21 @@ async def on_message(message):
     if message.author.bot: return
 
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Anti-Old Slip 5m)")
+        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Anti-Replay)")
         
         try:
-            # 1. เช็คสลิป (ได้เวลา และ รหัสอ้างอิง)
+            # 1. เช็คสลิป
             success, amount, trans_ref, result_msg = check_slip_easyslip(message.attachments[0].url)
             
             if success:
-                # 2. เช็คว่ารหัสสลิปนี้ (trans_ref) เคยใช้ยัง?
+                # 2. เช็คว่าใช้ไปหรือยัง
                 if is_slip_used(trans_ref):
                     await status_msg.edit(content=f"❌ **สลิปซ้ำ!** รายการนี้ถูกใช้งานไปแล้ว")
                     return
 
-                # 3. ถ้าผ่าน -> เติมเงิน
+                # 3. เติมเงิน
                 new_bal = add_balance(message.author.id, amount)
-                save_used_slip(trans_ref) 
+                save_used_slip(trans_ref)
 
                 success_embed = discord.Embed(title="✅ เติมเงินสำเร็จ!", color=discord.Color.green())
                 success_embed.description = f"**จำนวน:** `{amount} บาท`\n**คงเหลือ:** `{new_bal} บาท`"
@@ -305,9 +308,10 @@ async def on_message(message):
 
         except Exception as e:
             print(traceback.format_exc())
-            await status_msg.edit(content=f"⚠️ ระบบ Error: `{str(e)}`")
+            await status_msg.edit(content=f"⚠️ เกิดข้อผิดพลาด: `{str(e)}`")
 
     await bot.process_commands(message)
 
 server_on()
+# ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
