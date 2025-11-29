@@ -173,7 +173,7 @@ def check_slip_easyslip(image_url):
                 
                 print(f"Time Diff: {time_diff:.2f} mins")
                 if time_diff > 5: 
-                    return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) รับเฉพาะสลิปใหม่ไม่เกิน 5 นาที"
+                    return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว)"
             except:
                 pass 
 
@@ -189,7 +189,7 @@ def check_slip_easyslip(image_url):
 
 class ConfirmBuyView(discord.ui.View):
     def __init__(self, product, user_id):
-        super().__init__(timeout=60) # หมดเวลาใน 60 วิ
+        super().__init__(timeout=60)
         self.product = product
         self.user_id = user_id
 
@@ -205,22 +205,17 @@ class ConfirmBuyView(discord.ui.View):
             await interaction.response.edit_message(content=f"❌ **เงินไม่พอ!** ขาดอีก `{price - user_bal}` บาท\n(กรุณาเติมเงินก่อน)", view=None, embed=None)
             return
 
-        # ตัดเงิน
         if deduct_balance(interaction.user.id, price):
-            # ให้ยศ
             role = interaction.guild.get_role(self.product["role_id"])
             if role:
                 try:
                     await interaction.user.add_roles(role)
-                    # แจ้งผล
                     embed = discord.Embed(title="🎉 สั่งซื้อสำเร็จ!", description=f"✅ คุณได้รับยศ {role.mention} เรียบร้อยแล้ว", color=discord.Color.green())
                     embed.add_field(name="สินค้า", value=self.product["name"], inline=True)
                     embed.add_field(name="ราคา", value=f"{price} บาท", inline=True)
                     embed.add_field(name="คงเหลือ", value=f"{user_bal - price} บาท", inline=True)
-                    
                     await interaction.response.edit_message(content=None, embed=embed, view=None)
                     
-                    # Log
                     if log := interaction.guild.get_channel(ADMIN_LOG_ID):
                         await log.send(f"🛒 **[BUY]** {interaction.user.mention} ซื้อ **{self.product['name']}** ราคา {price} บาท")
                 except Exception as e:
@@ -274,10 +269,8 @@ class MainShopView(discord.ui.View):
         bal = get_balance(interaction.user.id)
         await interaction.response.send_message(f"💳 ยอดเงินคงเหลือของคุณ: **{bal:.2f} บาท**", ephemeral=True)
 
-    # 🔥 ปุ่มล้างตัวเลือก: แก้ให้ Refresh Message แทนการส่งข้อความ
     @discord.ui.button(label="ล้างตัวเลือก", style=discord.ButtonStyle.danger, emoji="🗑️", row=0, custom_id="clear_select")
     async def clear(self, interaction, button):
-        # รีเฟรช View กลับเป็นค่าเริ่มต้น (Dropdown จะว่างเปล่า)
         await interaction.response.edit_message(view=MainShopView())
 
     @discord.ui.select(
@@ -290,7 +283,6 @@ class MainShopView(discord.ui.View):
         prod = next(p for p in PRODUCTS if p["id"] == pid)
         user_bal = get_balance(interaction.user.id)
         
-        # 🔥 แก้ไข: ไม่ซื้อทันที แต่ส่งหน้ายืนยัน (Confirm View)
         embed = discord.Embed(title="🛒 ยืนยันการสั่งซื้อ", color=discord.Color.blue())
         embed.description = f"คุณกำลังจะซื้อ: **{prod['name']}**\nราคา: **{prod['price']} บาท**"
         embed.add_field(name="ยอดเงินคงเหลือของคุณ", value=f"{user_bal} บาท")
@@ -298,14 +290,8 @@ class MainShopView(discord.ui.View):
         if user_bal < prod['price']:
             embed.color = discord.Color.red()
             embed.set_footer(text="❌ ยอดเงินไม่เพียงพอ กรุณาเติมเงินก่อน")
-            # ถ้าเงินไม่พอ ส่งปุ่มยืนยันไปก็กดไม่ได้อยู่ดี (หรือจะให้กดแล้วแจ้งเตือนก็ได้)
-            # ในที่นี้ส่ง View ไปปกติ แต่ปุ่มยืนยันจะเช็คเงินอีกรอบ
         
         await interaction.response.send_message(embed=embed, view=ConfirmBuyView(prod, interaction.user.id), ephemeral=True)
-        
-        # รีเซ็ต Dropdown (เพื่อให้เลือกใหม่ได้ง่ายในครั้งหน้า)
-        # หมายเหตุ: การรีเซ็ต Dropdown ใน public message ต้อง edit_message ซึ่งอาจจะติด rate limit ถ้าคนกดเยอะ
-        # แต่เพื่อ UX ที่ดี เราปล่อยไว้ หรือใช้ปุ่ม "ล้างตัวเลือก" ที่ทำไว้แล้วก็ได้ครับ
 
 # =================================================================
 # 🤖 Main Logic
@@ -345,6 +331,27 @@ async def setup(interaction):
     if SHOP_GIF_URL.startswith("http"): embed_shop.set_image(url=SHOP_GIF_URL)
     await interaction.channel.send(embed=embed_shop, view=MainShopView())
     await interaction.followup.send("✅ สร้างร้านค้าเรียบร้อย!")
+
+# 🔥 [NEW COMMAND] คำสั่งแอดมิน: เติมเงินให้ลูกค้า
+@bot.tree.command(name="add_money", description="[Admin] เติมเงินให้ลูกค้า (ใส่ติดลบเพื่อหักเงิน)")
+@app_commands.default_permissions(administrator=True)
+@app_commands.describe(user="ลูกค้าที่ต้องการเติมให้", amount="จำนวนเงิน (บาท)")
+async def add_money_command(interaction: discord.Interaction, user: discord.Member, amount: float):
+    new_bal = add_balance(user.id, amount)
+    
+    embed = discord.Embed(
+        title="💸 ปรับยอดเงินสำเร็จ (Manual)",
+        description=f"จัดการโดย: {interaction.user.mention}",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="ลูกค้า", value=user.mention, inline=True)
+    embed.add_field(name="ยอดที่เพิ่ม/ลด", value=f"{amount:+.2f} บาท", inline=True)
+    embed.add_field(name="ยอดคงเหลือ", value=f"{new_bal:.2f} บาท", inline=False)
+    
+    await interaction.response.send_message(embed=embed)
+    
+    if log := bot.get_channel(ADMIN_LOG_ID):
+        await log.send(f"🔧 **[ADMIN]** {interaction.user.mention} ปรับเงินให้ {user.mention} จำนวน {amount} บาท")
 
 @bot.event
 async def on_message(message):
