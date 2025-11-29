@@ -13,10 +13,10 @@ from myserver import server_on
 # ⚙️ ส่วนที่ 1: ตั้งค่าบอท
 # =================================================================
 
-# ⚠️⚠️⚠️ แก้ไข: เอา Token บอทของคุณมาใส่ตรงนี้ ⚠️⚠️⚠️
+# ⚠️ แก้ไข: ใส่ Token บอท
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
 
-# API Key EasySlip (ตัดช่องว่างให้แล้ว)
+# API Key EasySlip
 EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 
 # ID ห้องต่างๆ
@@ -29,8 +29,8 @@ QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 
 # 🔥 [SMART CHECK] ตั้งค่าความปลอดภัย
-EXPECTED_NAMES = ['ชานนท์', 'Chanon', 'chanon'] # ชื่อบัญชีที่รับเงิน
-MIN_AMOUNT = 1.00 # ยอดโอนขั้นต่ำ
+EXPECTED_NAMES = ['ชานนท์', 'Chanon', 'chanon'] 
+MIN_AMOUNT = 1.00 
 
 PRODUCTS = [
     {"id": "item1",  "emoji": "⭐",  "name": "𝙳𝙾𝙽𝙰𝚃𝙴",        "price": 89,  "role_id": 1431279741440364625},
@@ -123,7 +123,7 @@ def save_used_slip(trans_ref):
     with open(SLIP_DB_FILE, "w") as f:
         json.dump(used_slips, f, indent=4)
 
-# 🔥 แก้ไข: ระบบเช็คเวลาอัจฉริยะ (รองรับ พ.ศ./ค.ศ.)
+# 🔥 แก้ไข: ระบบเช็คสลิป (รองรับ ISO 8601 Format + T + Timezone)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
@@ -165,56 +165,50 @@ def check_slip_easyslip(image_url):
                 if not name_matched:
                     return False, 0, None, f"❌ ชื่อผู้รับเงินในสลิปไม่ถูกต้อง (โอนให้: {receiver_name})"
 
-            # ⏰ 4. เช็คเวลา (Smart Date Parser)
+            # ⏰ 4. เช็คเวลา (Smart ISO Parser)
             try:
-                date_str = slip_data['date'] # เช่น 2025-11-29 หรือ 29-11-2025
-                time_str = slip_data['time'] # เช่น 14:30:00
+                # ดึงวันที่และเวลา (API อาจส่งมาแบบ 2025-11-29T22:31:49+07:00)
+                slip_date_str = f"{slip_data['date']} {slip_data['time']}"
                 
-                # รวมร่างวันเวลา
-                full_dt_str = f"{date_str} {time_str}"
+                # ทำความสะอาดข้อมูลวันที่
+                slip_date_str = slip_date_str.replace("T", " ") # เปลี่ยน T เป็นเว้นวรรค
+                if "+" in slip_date_str: 
+                    slip_date_str = slip_date_str.split("+")[0] # ตัด Timezone ออก (+07:00)
+                if "." in slip_date_str: 
+                    slip_date_str = slip_date_str.split(".")[0] # ตัดเสี้ยววินาทีออก
                 
-                # ตัดเศษวินาทีทิ้ง (ถ้ามี)
-                if "." in full_dt_str: full_dt_str = full_dt_str.split(".")[0]
+                # ลบช่องว่างส่วนเกิน
+                slip_date_str = slip_date_str.strip()
 
-                # พยายามแปลงหลายรูปแบบ
-                try:
-                    slip_dt = datetime.strptime(full_dt_str, "%Y-%m-%d %H:%M:%S")
-                except:
-                    try:
-                        # ลองรูปแบบอื่นเผื่อ API ส่งมาแปลกๆ
-                        slip_dt = datetime.strptime(full_dt_str, "%d-%m-%Y %H:%M:%S")
-                    except:
-                        # ถ้ายังไม่ได้ ให้ลองเช็คปี พ.ศ.
-                        print(f"Date Parse Error on: {full_dt_str}")
-                        raise ValueError("Unknown Date Format")
-
-                # ถ้าปีเป็น พ.ศ. (เช่น 2568) ให้แปลงเป็น ค.ศ.
+                # แปลงเป็นเวลา
+                slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
+                
+                # ตรวจสอบว่าเป็นปี พ.ศ. หรือไม่ (ถ้า > 2500 แสดงว่าเป็น พ.ศ.)
                 if slip_dt.year > 2500:
                     slip_dt = slip_dt.replace(year=slip_dt.year - 543)
 
+                # เวลาปัจจุบัน (+7 ชั่วโมง)
                 now = datetime.utcnow() + timedelta(hours=7)
+                
+                # หาผลต่าง (นาที)
                 time_diff = (now - slip_dt).total_seconds() / 60
                 
-                print(f"Slip Time: {slip_dt} | Server Time: {now}")
-                print(f"Time Diff: {time_diff:.2f} mins")
+                print(f"Slip: {slip_dt} | Server: {now} | Diff: {time_diff:.2f} min")
                 
                 if time_diff > 5: 
                     return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) รับเฉพาะสลิปใหม่ไม่เกิน 5 นาที"
                 
-                # กันสลิปอนาคต (เผื่อเวลา server ดีเลย์นิดหน่อย ให้ -2 นาที)
-                if time_diff < -2:
-                     print("⚠️ Warning: Future slip detected")
-
             except Exception as e:
                 print(f"Time Check Error: {e}")
-                # ⚠️ ถ้าอ่านเวลาไม่ได้จริงๆ ให้ดีดออกเพื่อความปลอดภัย
-                return False, 0, None, f"❌ ไม่สามารถตรวจสอบวันที่ในสลิปได้ (API ส่งมาแบบ: {date_str})"
+                # ⚠️ ถ้าอ่านเวลาไม่ได้ ให้ดีดออกเลย
+                return False, 0, None, f"❌ ไม่สามารถตรวจสอบวันที่ในสลิปได้ (API ส่งมาแบบ: {slip_date_str})" 
 
             return True, amount_float, trans_ref, "OK"
         else:
             return False, 0, None, data.get('message', 'สลิปไม่ถูกต้อง หรือไม่ชัดเจน')
     except Exception as e:
         return False, 0, None, f"System Error: {str(e)}"
+
 # =================================================================
 # 📝 หน้าต่างกรอกจำนวนเงิน (Modal)
 # =================================================================
@@ -248,7 +242,6 @@ class TopupModal(discord.ui.Modal, title="เติมเงินเข้า�
 class MainShopView(discord.ui.View):
     def __init__(self): super().__init__(timeout=None)
     
-    # ปุ่มเติมเงิน -> เรียก Modal
     @discord.ui.button(label="เติมเงิน (QR Code)", style=discord.ButtonStyle.primary, emoji="💳", row=0, custom_id="topup_btn")
     async def topup(self, interaction, button):
         await interaction.response.send_modal(TopupModal())
@@ -327,7 +320,7 @@ async def on_message(message):
     if message.author.bot: return
 
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Strict Mode)")
+        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Fixed Date)")
         
         try:
             # 1. เช็คสลิป
@@ -363,4 +356,3 @@ async def on_message(message):
 server_on()
 # ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
-
