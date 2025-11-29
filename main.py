@@ -12,7 +12,10 @@ from myserver import server_on
 # ⚙️ ตั้งค่าบอท
 # =================================================================
 
+# ⚠️ แก้ไข: ใส่ Token บอทของคุณตรงนี้
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
+
+# API Key EasySlip
 EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 
 SHOP_CHANNEL_ID = 1416797606180552714  
@@ -51,7 +54,7 @@ def load_db():
     try:
         with open(DB_FILE, "r") as f:
             data = json.load(f)
-            # 🛡️ ป้องกันข้อมูลพัง: ถ้าข้อมูลไม่ใช่ Dict ให้รีเซ็ตเลย
+            # 🛡️ ป้องกันข้อมูลพัง
             if not isinstance(data, dict):
                 print("⚠️ Database ผิดพลาด! รีเซ็ตใหม่")
                 return {}
@@ -68,26 +71,18 @@ def save_db(data):
 def get_balance(user_id):
     db = load_db()
     raw_val = db.get(str(user_id), 0.0)
-    
-    # 🛡️ ตัวแก้บัค: ถ้าค่าที่อ่านมาไม่ใช่ตัวเลข ให้รีเซ็ตเป็น 0 ทันที
-    if isinstance(raw_val, dict) or isinstance(raw_val, list):
-        print(f"⚠️ พบข้อมูลเสียของ {user_id} รีเซ็ตเป็น 0")
+    # 🛡️ แปลงเป็น float เสมอ ป้องกัน Error 'dict'
+    if isinstance(raw_val, (dict, list)):
         return 0.0
-        
     return float(raw_val)
 
 def add_balance(user_id, amount):
     db = load_db()
     uid = str(user_id)
-    
-    # อ่านค่าเก่า (ผ่านตัวกรองแก้บัค)
     current = get_balance(uid) 
-    
-    # ตรวจสอบค่าใหม่
     try:
         add_val = float(amount)
     except:
-        print(f"❌ Error: ยอดเงิน '{amount}' ไม่ใช่ตัวเลข")
         return current
 
     new_bal = current + add_val
@@ -124,13 +119,7 @@ def check_slip_easyslip(image_url):
         print(f"API Result: {data}")
 
         if response.status_code == 200 and data['status'] == 200:
-            # 🛡️ ตัวแก้บัค: ดึงยอดเงินแบบปลอดภัย
             raw_amount = data['data']['amount']
-            if isinstance(raw_amount, dict):
-                # กรณี API เพี้ยนส่งมาเป็น Dict
-                print("⚠️ API ส่งยอดเงินมาเป็น Dict!")
-                return False, 0, "API Error (Invalid Amount Type)"
-            
             return True, float(raw_amount), "OK"
         else:
             return False, 0, data.get('message', 'Error')
@@ -197,6 +186,8 @@ async def on_ready():
         await bot.tree.sync()
     except Exception as e:
         print(e)
+
+# ⚠️ แก้ไขส่วนที่โค้ดเดิมของคุณขาดหายไป
 @bot.tree.command(name="setup_shop", description="[Admin] สร้างหน้าต่างร้านค้า (GIF + Instructions)")
 @app_commands.default_permissions(administrator=True)
 async def setup(interaction):
@@ -213,6 +204,19 @@ async def setup(interaction):
         "• หากพบปัญหาติดต่อแอดมินผ่านการเปิดตั๋วเท่านั้น\n\n"
         "🛒 **เลือกสินค้าที่คุณต้องการได้เลย!** 👇"
     )
+
+    embed_shop = discord.Embed(
+        title="✨ 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 𝐒𝐇𝐎𝐏 ✨",
+        description=description_text,
+        color=discord.Color.from_rgb(47, 49, 54) 
+    )
+    
+    if SHOP_GIF_URL.startswith("http"):
+        embed_shop.set_image(url=SHOP_GIF_URL)
+
+    await interaction.channel.send(embed=embed_shop, view=MainShopView())
+    await interaction.response.send_message("✅ สร้างร้านค้าเรียบร้อย!", ephemeral=True)
+
 @bot.event
 async def on_message(message):
     if message.author.bot: return
@@ -243,5 +247,5 @@ async def on_message(message):
     await bot.process_commands(message)
 
 server_on()
-# ⚠️ อย่าลืมใส่ TOKEN ตรงนี้ (ย้ำครั้งสุดท้ายยย)
+# ⚠️ ใส่ TOKEN ให้เรียบร้อย
 bot.run(os.getenv('TOKEN'))
