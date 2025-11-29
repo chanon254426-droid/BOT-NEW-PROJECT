@@ -4,25 +4,30 @@ from discord.ext import commands
 from discord import app_commands
 import json
 import requests
-import io
-import traceback # ใช้ดู Error แบบละเอียด
+import io # ใช้สำหรับจัดการไฟล์รูปภาพ
+import traceback # ช่วยบอกจุด Error
 from myserver import server_on
 
 # =================================================================
-# ⚙️ ตั้งค่าบอท
+# ⚙️ ส่วนที่ 1: ตั้งค่าบอท
 # =================================================================
 
-DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
-# ใส่ API Key (มี .strip() ช่วยตัดช่องว่างให้แล้ว)
-EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
+# ⚠️ แก้ไข: ใส่ Token บอทของคุณตรงนี้ (ในเครื่องหมายฟันหนู)
+DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
 
+# API Key EasySlip (ตัดช่องว่างให้แล้ว)
+EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip() 
+
+# ID ห้องต่างๆ
 SHOP_CHANNEL_ID = 1416797606180552714  
 SLIP_CHANNEL_ID = 1416797464350167090  
 ADMIN_LOG_ID = 1441466742885978144     
 
+# ลิงก์รูปภาพ
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 
+# 📦 รายการสินค้า (เช็คแล้ว Emoji 🌷 ถูกต้อง ใช้งานได้)
 PRODUCTS = [
     {"id": "item1",  "emoji": "⭐",  "name": "𝙳𝙾𝙽𝙰𝚃𝙴",        "price": 89,  "role_id": 1431279741440364625},
     {"id": "item2",  "emoji": "👻",  "name": "ᴍᴏᴅ ᴅᴇᴠᴏᴜʀ",     "price": 120, "role_id": 1432064283767738571},
@@ -41,22 +46,19 @@ PRODUCTS = [
 ]
 
 # =================================================================
-# 💾 ระบบฐานข้อมูล (เพิ่มระบบกันไฟล์พัง)
+# 💾 ส่วนที่ 2: Database (แก้บัคตัวเลข และ ไฟล์พัง)
 # =================================================================
 DB_FILE = "user_balance.json"
 
 def load_db():
-    # ถ้าไม่มีไฟล์ ให้สร้างใหม่
     if not os.path.exists(DB_FILE):
         with open(DB_FILE, "w") as f: json.dump({}, f)
         return {}
-    
     try:
         with open(DB_FILE, "r") as f:
             return json.load(f)
     except json.JSONDecodeError:
-        # ⚠️ ถ้าไฟล์พัง (อ่านไม่ออก) ให้รีเซ็ตใหม่เลย กันบอทค้าง
-        print("⚠️ ไฟล์ Database เสียหาย! ทำการรีเซ็ตใหม่")
+        print("⚠️ Database เสียหาย! ทำการรีเซ็ตใหม่")
         with open(DB_FILE, "w") as f: json.dump({}, f)
         return {}
 
@@ -65,43 +67,52 @@ def save_db(data):
 
 def get_balance(user_id):
     db = load_db()
+    # ⚠️ แก้ไข: บังคับแปลงเป็น float เสมอ
     return float(db.get(str(user_id), 0.0))
 
 def add_balance(user_id, amount):
     db = load_db()
     uid = str(user_id)
+    # ⚠️ แก้ไข: บังคับแปลงเป็น float ทั้งยอดเก่าและยอดใหม่
     current = float(db.get(uid, 0.0))
-    new_bal = current + float(amount)
-    db[uid] = new_bal
+    add_amount = float(amount)
+    
+    new_balance = current + add_amount
+    db[uid] = new_balance
     save_db(db)
-    return new_bal
+    return new_balance
 
 def deduct_balance(user_id, amount):
     db = load_db()
     uid = str(user_id)
     current = float(db.get(uid, 0.0))
     cost = float(amount)
+    
     if current >= cost:
         db[uid] = current - cost
         save_db(db)
         return True
     return False
 
+# ฟังก์ชันส่งไฟล์รูปภาพ (แก้ Invalid Image)
 def check_slip_easyslip(image_url):
-    print(f"กำลังตรวจสอบรูป: {image_url}")
+    print(f"Checking slip: {image_url}")
     try:
         img_response = requests.get(image_url)
-        if img_response.status_code != 200: return False, 0, "โหลดรูปไม่ได้"
+        if img_response.status_code != 200:
+            return False, 0, "โหลดรูปจาก Discord ไม่ได้"
         
         files = {'file': ('slip.jpg', io.BytesIO(img_response.content), 'image/jpeg')}
+        
         response = requests.post(
             "https://developer.easyslip.com/api/v1/verify",
             headers={'Authorization': f'Bearer {EASYSLIP_API_KEY}'},
-            files=files, timeout=15
+            files=files,
+            timeout=15
         )
         
         data = response.json()
-        print(f"API Response: {data}") # โชว์ผลลัพธ์ในจอดำ
+        print(f"API Result: {data}")
 
         if response.status_code == 200 and data['status'] == 200:
             return True, float(data['data']['amount']), "OK"
@@ -112,7 +123,7 @@ def check_slip_easyslip(image_url):
         return False, 0, str(e)
 
 # =================================================================
-# 🖥️ UI
+# 🖥️ ส่วนที่ 3: UI
 # =================================================================
 
 class MainShopView(discord.ui.View):
@@ -121,8 +132,13 @@ class MainShopView(discord.ui.View):
     @discord.ui.button(label="เติมเงิน (QR Code)", style=discord.ButtonStyle.primary, emoji="💳", row=0, custom_id="topup_btn")
     async def topup(self, interaction, button):
         embed = discord.Embed(
-            title="🏦 เติมเงินอัตโนมัติ",
-            description="1. สแกน QR Code\n2. ส่งสลิปห้อง <#{SLIP_CHANNEL_ID}>\n3. รอระบบเติมเงินอัตโนมัติ", 
+            title="🏦 เติมเงินอัตโนมัติ (Auto Topup)",
+            description=(
+                f"1. สแกน QR Code เพื่อโอนเงิน\n"
+                f"2. นำรูปสลิปส่งที่ห้อง <#{SLIP_CHANNEL_ID}>\n"
+                f"3. ระบบจะตรวจสอบยอดเงินและเพิ่มเข้ากระเป๋าคุณ **โดยอัตโนมัติ**\n"
+                f"(ไม่ต้องกลัวยอดทับกัน ระบบแยกกระเป๋าตามชื่อผู้ใช้ครับ ✅)"
+            ), 
             color=discord.Color.gold()
         )
         embed.set_image(url=QR_CODE_URL)
@@ -131,31 +147,46 @@ class MainShopView(discord.ui.View):
     @discord.ui.button(label="เช็คยอดเงิน", style=discord.ButtonStyle.success, emoji="💰", row=0, custom_id="check_bal")
     async def check(self, interaction, button):
         bal = get_balance(interaction.user.id)
-        await interaction.response.send_message(f"💳 ยอดเงินของคุณ: **{bal:.2f} บาท**", ephemeral=True)
+        await interaction.response.send_message(f"💳 ยอดเงินคงเหลือของคุณ: **{bal:.2f} บาท**", ephemeral=True)
 
     @discord.ui.button(label="ล้างตัวเลือก", style=discord.ButtonStyle.danger, emoji="🗑️", row=0, custom_id="clear_select")
     async def clear(self, interaction, button):
-        await interaction.response.send_message("🗑️ ล้างการเลือกแล้ว", ephemeral=True)
+        await interaction.response.send_message("🗑️ ล้างการเลือกเรียบร้อยแล้ว", ephemeral=True)
 
     @discord.ui.select(
-        placeholder="🛒 เลือกสินค้า...",
-        options=[discord.SelectOption(label=p['name'], value=p["id"], description=f"{p['price']} บาท", emoji=p["emoji"]) for p in PRODUCTS],
-        custom_id="shop_select", row=1 
+        placeholder="🛒 คลิกเพื่อเลือกสินค้าที่ต้องการซื้อ...",
+        options=[
+            discord.SelectOption(
+                label=f"{p['name']}",
+                value=p["id"], 
+                description=f"ราคา {p['price']} บาท",
+                emoji=p["emoji"]
+            ) for p in PRODUCTS
+        ],
+        custom_id="shop_select",
+        row=1 
     )
     async def buy(self, interaction, select):
         pid = select.values[0]
         prod = next(p for p in PRODUCTS if p["id"] == pid)
+        
         if deduct_balance(interaction.user.id, prod["price"]):
             role = interaction.guild.get_role(prod["role_id"])
-            if role: await interaction.user.add_roles(role)
-            await interaction.response.send_message(f"✅ ซื้อสำเร็จ! ได้รับยศ {role.mention}", ephemeral=True)
+            if role: 
+                await interaction.user.add_roles(role)
+                msg = f"✅ **ชำระเงินสำเร็จ!** ได้รับยศ {role.mention} เรียบร้อยแล้ว"
+            else:
+                msg = "⚠️ ซื้อสำเร็จ (แต่ไม่พบยศในระบบ โปรดติดต่อแอดมิน)"
+            
+            await interaction.response.send_message(msg, ephemeral=True)
+            
             if log := interaction.guild.get_channel(ADMIN_LOG_ID):
-                await log.send(f"🛒 {interaction.user.mention} ซื้อ {prod['name']} ({prod['price']} บ.)")
+                await log.send(f"🛒 **[BUY]** {interaction.user.mention} ซื้อ **{prod['name']}** ราคา {prod['price']} บาท")
         else:
-            await interaction.response.send_message(f"❌ เงินไม่พอ! (ขาด {prod['price'] - get_balance(interaction.user.id):.2f})", ephemeral=True)
+            await interaction.response.send_message(f"❌ **เงินไม่พอ!** ขาดอีก `{prod['price'] - get_balance(interaction.user.id):.2f}` บาท\n(กดปุ่ม 'เติมเงิน' ด้านบนได้เลย)", ephemeral=True)
 
 # =================================================================
-# 🤖 Main Logic
+# 🤖 ส่วนที่ 4: Main Logic
 # =================================================================
 intents = discord.Intents.default()
 intents.members = True
@@ -171,50 +202,64 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="setup_shop", description="[Admin] สร้างร้านค้า")
+@bot.tree.command(name="setup_shop", description="[Admin] สร้างหน้าต่างร้านค้า (GIF + Instructions)")
 @app_commands.default_permissions(administrator=True)
 async def setup(interaction):
-    embed = discord.Embed(title="✨ PREMIUM STORE ✨", description="🛒 เลือกสินค้าด้านล่าง\n💳 เติมเงินกดปุ่มสีฟ้า", color=discord.Color.dark_theme())
-    if SHOP_GIF_URL.startswith("http"): embed.set_image(url=SHOP_GIF_URL)
-    await interaction.channel.send(embed=embed, view=MainShopView())
-    await interaction.response.send_message("✅ Done!", ephemeral=True)
+    description_text = (
+        "ยินดีต้อนรับสู่ **💻 NEW PROJECT!** ระบบอัตโนมัติ 24 ชม.\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📜 **ขั้นตอนการสั่งซื้อสินค้า**\n"
+        "1️⃣ กดปุ่ม **`เติมเงิน (QR Code)`** และส่งสลิปเพื่อเติมเครดิต\n"
+        "2️⃣ กดปุ่ม **`เช็คยอดเงิน`** เพื่อตรวจสอบความถูกต้อง\n"
+        "3️⃣ เลือกสินค้าที่ต้องการจาก **`เมนูด้านล่าง`** เพื่อสั่งซื้อทันที\n\n"
+        "⚠️ **ข้อตกลงและเงื่อนไข**\n"
+        "• โปรดตรวจสอบยอดเงินให้เพียงพอก่อนกดสั่งซื้อ\n"
+        "• สินค้าซื้อแล้วไม่รับเปลี่ยนหรือคืนเงินทุกกรณี\n"
+        "• หากพบปัญหาติดต่อแอดมินผ่านการเปิดตั๋วเท่านั้น\n\n"
+        "🛒 **เลือกสินค้าที่คุณต้องการได้เลย!** 👇"
+    )
+
+    embed_shop = discord.Embed(
+        title="✨ 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 𝐒𝐇𝐎𝐏 ✨",
+        description=description_text,
+        color=discord.Color.from_rgb(47, 49, 54) 
+    )
+    
+    if SHOP_GIF_URL.startswith("http"):
+        embed_shop.set_image(url=SHOP_GIF_URL)
+    else:
+        embed_shop.set_footer(text="⚠️ อย่าลืมใส่ลิงก์รูป GIF")
+
+    await interaction.channel.send(embed=embed_shop, view=MainShopView())
+    await interaction.response.send_message("✅ สร้างร้านค้าเรียบร้อย!", ephemeral=True)
 
 @bot.event
 async def on_message(message):
     if message.author.bot: return
 
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (FOUND check)")
+        status_msg = await message.channel.send(f"⏳ ระบบกำลังตรวจสอบสลิปของ {message.author.mention} ...")
         
         try:
-            # 1. เช็คสลิป
             success, amount, result_msg = check_slip_easyslip(message.attachments[0].url)
             
             if success:
-                # 2. บันทึกเงิน (จุดที่ชอบค้าง)
-                print(f"Slip OK. Adding {amount} to {message.author.id}")
                 new_bal = add_balance(message.author.id, amount)
-                print("Balance Updated.")
-
                 success_embed = discord.Embed(title="✅ เติมเงินสำเร็จ!", color=discord.Color.green())
-                success_embed.description = f"**จำนวน:** `{amount} บาท`\n**คงเหลือ:** `{new_bal} บาท`"
+                success_embed.description = f"**ผู้เติม:** {message.author.mention}\n**จำนวนเงิน:** `{amount} บาท`\n**ยอดเงินคงเหลือ:** `{new_bal} บาท`"
                 
-                await status_msg.delete()
-                await message.channel.send(content=message.author.mention, embed=success_embed)
-                
+                await status_msg.edit(content=None, embed=success_embed)
                 if log := bot.get_channel(ADMIN_LOG_ID):
-                    await log.send(f"💰 {message.author.mention} เติม {amount} บาท")
+                    await log.send(f"💰 **[TOPUP]** {message.author.mention} เติมเงินสำเร็จ {amount} บาท (Auto)")
             else:
-                await status_msg.edit(content=f"❌ ไม่ผ่าน: `{result_msg}`")
-
+                await status_msg.edit(content=f"❌ **ทำรายการไม่สำเร็จ**\nเหตุผล: `{result_msg}`")
         except Exception as e:
-            # 🚨 ถ้าพังตรงไหน มันจะฟ้องตรงนี้ ไม่เงียบหาย
-            err_msg = f"⚠️ ระบบ Error: {str(e)}"
-            print(traceback.format_exc()) # ปริ้นท์ Error ลงจอดำ
-            await status_msg.edit(content=err_msg)
+            # ดัก Error ไม่ให้บอทดับ
+            print(traceback.format_exc())
+            await status_msg.edit(content=f"⚠️ เกิดข้อผิดพลาดของระบบ: `{str(e)}`")
 
     await bot.process_commands(message)
 
 server_on()
-# ⚠️ อย่าลืมใส่ TOKEN ตรงนี้
+# ⚠️ อย่าลืมใส่ TOKEN บอทบรรทัดนี้ด้วยนะครับ
 bot.run(os.getenv('TOKEN'))
