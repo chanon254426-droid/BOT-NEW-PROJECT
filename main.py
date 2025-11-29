@@ -143,17 +143,28 @@ def check_slip_easyslip(image_url):
             # ⏰ เช็คเวลา (ต้องไม่เกิน 5 นาที)
             try:
                 slip_date_str = f"{slip_data['date']} {slip_data['time']}"
+                if "." in slip_date_str:
+                    slip_date_str = slip_date_str.split(".")[0]
+                
                 slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
+                
+                # เวลาปัจจุบัน (UTC+7 Thailand)
                 now = datetime.utcnow() + timedelta(hours=7)
+                
+                # หาผลต่างเวลา (นาที)
                 time_diff = (now - slip_dt).total_seconds() / 60
                 
                 print(f"Time Diff: {time_diff:.2f} mins")
                 
-                if time_diff > 5: 
-                    return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) ต้องส่งภายใน 5 นาทีหลังโอน"
+                if time_diff > 5:
+                    return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) รับเฉพาะสลิปใหม่ไม่เกิน 5 นาที"
+                
+                if time_diff < -2:
+                     print("⚠️ Warning: สลิปมาจากอนาคต? หรือนาฬิกา Server ไม่ตรง")
+
             except Exception as e:
-                print(f"Time Check Error: {e}") 
-                pass
+                print(f"❌ Time Check Error: {e}")
+                return False, 0, None, "ไม่สามารถตรวจสอบเวลาในสลิปได้ (รูปแบบวันที่ผิด)"
 
             if isinstance(raw_amount, dict):
                 raw_amount = raw_amount.get('amount', 0)
@@ -279,21 +290,21 @@ async def on_message(message):
     if message.author.bot: return
 
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Anti-Replay)")
+        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Anti-Old Slip 5m)")
         
         try:
-            # 1. เช็คสลิป
+            # 1. เช็คสลิป (ได้เวลา และ รหัสอ้างอิง)
             success, amount, trans_ref, result_msg = check_slip_easyslip(message.attachments[0].url)
             
             if success:
-                # 2. เช็คว่าใช้ไปหรือยัง
+                # 2. เช็คว่ารหัสสลิปนี้ (trans_ref) เคยใช้ยัง?
                 if is_slip_used(trans_ref):
                     await status_msg.edit(content=f"❌ **สลิปซ้ำ!** รายการนี้ถูกใช้งานไปแล้ว")
                     return
 
-                # 3. เติมเงิน
+                # 3. ถ้าผ่าน -> เติมเงิน
                 new_bal = add_balance(message.author.id, amount)
-                save_used_slip(trans_ref)
+                save_used_slip(trans_ref) 
 
                 success_embed = discord.Embed(title="✅ เติมเงินสำเร็จ!", color=discord.Color.green())
                 success_embed.description = f"**จำนวน:** `{amount} บาท`\n**คงเหลือ:** `{new_bal} บาท`"
@@ -308,7 +319,7 @@ async def on_message(message):
 
         except Exception as e:
             print(traceback.format_exc())
-            await status_msg.edit(content=f"⚠️ เกิดข้อผิดพลาด: `{str(e)}`")
+            await status_msg.edit(content=f"⚠️ ระบบ Error: `{str(e)}`")
 
     await bot.process_commands(message)
 
