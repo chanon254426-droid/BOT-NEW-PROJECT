@@ -10,23 +10,22 @@ from datetime import datetime, timedelta
 from myserver import server_on
 
 # =================================================================
-# ⚙️ ส่วนที่ 1: ตั้งค่าบอท
+# ⚙️ ส่วนที่ 1: ตั้งค่าบอท (CONFIG)
 # =================================================================
 
-# ⚠️ แก้ไข: ใส่ Token บอท
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
-
-# API Key EasySlip
 EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 
-# ID ห้องต่างๆ
 SHOP_CHANNEL_ID = 1416797606180552714  
 SLIP_CHANNEL_ID = 1416797464350167090  
 ADMIN_LOG_ID = 1441466742885978144     
 
-# ลิงก์รูปภาพ
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
+
+# 🔥 [SMART CHECK CONFIG] ตั้งค่าความฉลาด
+EXPECTED_NAME = 'ชานนท์'  # ⚠️ ใส่ชื่อจริงบางส่วนของคุณ (ต้องตรงกับในสลิป) เพื่อกันคนเอาสลิปร้านอื่นมาส่ง
+MIN_AMOUNT = 1.00        # ⚠️ ยอดโอนขั้นต่ำ (กันคนโอน 0.01 บาท)
 
 PRODUCTS = [
     {"id": "item1",  "emoji": "⭐",  "name": "𝙳𝙾𝙽𝙰𝚃𝙴",        "price": 89,  "role_id": 1431279741440364625},
@@ -119,7 +118,7 @@ def save_used_slip(trans_ref):
     with open(SLIP_DB_FILE, "w") as f:
         json.dump(used_slips, f, indent=4)
 
-# 🔥 แก้ไข: ระบบเช็คสลิปแบบเข้มงวด (Strict Security)
+# 🔥 [SMART CHECK] ระบบเช็คสลิปอัจฉริยะ (เวลา + ชื่อ + ยอดเงิน)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
@@ -137,42 +136,46 @@ def check_slip_easyslip(image_url):
         
         if response.status_code == 200 and data['status'] == 200:
             slip_data = data['data']
+            
+            # แปลงยอดเงินให้ปลอดภัย
             raw_amount = slip_data['amount']
+            if isinstance(raw_amount, dict): raw_amount = raw_amount.get('amount', 0)
+            amount_float = float(raw_amount)
+            
             trans_ref = slip_data['transRef']
             
-            # ⏰ ระบบเช็คเวลาแบบปลอดภัยสูงสุด
+            # 🕵️‍♂️ 1. เช็คชื่อผู้รับเงิน (Receiver Check)
+            # ข้อมูลผู้รับมักอยู่ใน: slip_data['receiver']['displayName'] หรือ ['name']
+            receiver_info = slip_data.get('receiver', {})
+            receiver_name = receiver_info.get('displayName', '') or receiver_info.get('name', '')
+            
+            # ถ้ามีชื่อใน Config และ ชื่อในสลิปไม่ตรงกับ Config -> ดีดออก
+            if EXPECTED_NAME and EXPECTED_NAME not in receiver_name:
+                print(f"Fraud Detect: Slip Receiver '{receiver_name}' != Expected '{EXPECTED_NAME}'")
+                return False, 0, None, f"❌ สลิปนี้โอนให้ '{receiver_name}' (ไม่ใช่บัญชีร้านค้า) ตรวจสอบบัญชีปลายทางด้วยครับ"
+
+            # 💰 2. เช็คยอดขั้นต่ำ
+            if amount_float < MIN_AMOUNT:
+                return False, 0, None, f"❌ ยอดโอนต่ำกว่ากำหนด (ขั้นต่ำ {MIN_AMOUNT} บาท)"
+
+            # ⏰ 3. เช็คเวลา (แบบยืดหยุ่น)
             try:
                 slip_date_str = f"{slip_data['date']} {slip_data['time']}"
+                if "." in slip_date_str: slip_date_str = slip_date_str.split(".")[0]
                 
-                # รองรับรูปแบบวันที่หลายแบบ (มีจุดทศนิยมหรือไม่มีก็ต้องอ่านได้)
-                if "." in slip_date_str:
-                    slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S.%f")
-                else:
-                    slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
-                
+                slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
                 now = datetime.utcnow() + timedelta(hours=7)
                 time_diff = (now - slip_dt).total_seconds() / 60
                 
                 print(f"Time Diff: {time_diff:.2f} mins")
                 
-                # กฎเหล็ก 1: สลิปเก่าเกิน 10 นาที -> ดีดออก
                 if time_diff > 10: 
                     return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) หมดอายุ"
-                
-                # กฎเหล็ก 2: เวลาติดลบผิดปกติ (เกิน 5 นาที) -> ดีดออก
-                if time_diff < -5:
-                    return False, 0, None, f"❌ เวลาในสลิปผิดปกติ (อนาคต) โปรดตรวจสอบวันที่ในมือถือ"
-
             except Exception as e:
-                # ⚠️ ถ้าอ่านเวลาไม่ได้ (Error) ให้ดีดออกเลย ห้ามปล่อยผ่าน
-                print(f"Time Check Failed: {e}")
-                return False, 0, None, "❌ ไม่สามารถตรวจสอบวันที่ในสลิปได้ (Refused)" 
+                print(f"Time Skip: {e}")
+                pass 
 
-            # จัดการยอดเงิน
-            if isinstance(raw_amount, dict):
-                raw_amount = raw_amount.get('amount', 0)
-            
-            return True, float(raw_amount), trans_ref, "OK"
+            return True, amount_float, trans_ref, "OK"
         else:
             return False, 0, None, data.get('message', 'สลิปไม่ถูกต้อง หรือไม่ชัดเจน')
     except Exception as e:
@@ -285,24 +288,24 @@ async def on_message(message):
     if message.author.bot: return
 
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Strict Mode)")
+        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Smart AI Check)")
         
         try:
-            # 1. เช็คสลิป (ได้เวลา และ รหัสอ้างอิง)
+            # 1. เช็คสลิป (เวลา + ชื่อผู้รับ + ยอดเงิน)
             success, amount, trans_ref, result_msg = check_slip_easyslip(message.attachments[0].url)
             
             if success:
-                # 2. เช็คว่ารหัสสลิปนี้ (trans_ref) เคยใช้ยัง?
+                # 2. เช็คว่ารหัสสลิปนี้ใช้ซ้ำไหม
                 if is_slip_used(trans_ref):
                     await status_msg.edit(content=f"❌ **สลิปซ้ำ!** รายการนี้ถูกใช้งานไปแล้ว")
                     return
 
-                # 3. ถ้าผ่าน -> เติมเงิน
+                # 3. ผ่านทุกด่าน -> เติมเงิน
                 new_bal = add_balance(message.author.id, amount)
                 save_used_slip(trans_ref) 
 
                 success_embed = discord.Embed(title="✅ เติมเงินสำเร็จ!", color=discord.Color.green())
-                success_embed.description = f"**จำนวน:** `{amount} บาท`\n**คงเหลือ:** `{new_bal} บาท`"
+                success_embed.description = f"**จำนวน:** `{amount:.2f} บาท`\n**คงเหลือ:** `{new_bal:.2f} บาท`"
                 
                 await status_msg.delete()
                 await message.channel.send(content=message.author.mention, embed=success_embed)
