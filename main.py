@@ -25,7 +25,7 @@ EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 SHOP_CHANNEL_ID = 1416797606180552714  
 SLIP_CHANNEL_ID = 1416797464350167090  
 ADMIN_LOG_ID = 1441466742885978144     
-HISTORY_CHANNEL_ID = 1441466742885978144 # ⚠️ ใส่ ID ห้องใหม่ที่เอาไว้เก็บรูปสลิป (ห้องประวัติ)
+HISTORY_CHANNEL_ID = 1444390933297631512 # ⚠️ ใส่ ID ห้องใหม่ที่เอาไว้เก็บรูปสลิป (ห้องประวัติ)
 
 # ลิงก์รูปภาพ
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
@@ -367,3 +367,4 @@ async def on_message(message):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
+
