@@ -124,11 +124,12 @@ def save_used_slip(trans_ref):
         json.dump(used_slips, f, indent=4)
 
 # 🔥 ระบบเช็คสลิป (รวมทุกฟีเจอร์)
+# 🔥 แก้ไข: ระบบเช็คสลิป (แก้บัคชื่อว่าง + เช็คเวลา)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
         img_response = requests.get(image_url)
-        if img_response.status_code != 200: return False, 0, None, "โหลดรูปไม่ได้"
+        if img_response.status_code != 200: return False, 0, None, "ดาวน์โหลดรูปไม่สำเร็จ"
         
         files = {'file': ('slip.jpg', io.BytesIO(img_response.content), 'image/jpeg')}
         response = requests.post(
@@ -138,6 +139,7 @@ def check_slip_easyslip(image_url):
         )
         
         data = response.json()
+        # print(f"Debug API Data: {data}") # เปิดบรรทัดนี้ถ้าอยากเห็นข้อมูลดิบ
         
         if response.status_code == 200 and data['status'] == 200:
             slip_data = data['data']
@@ -152,21 +154,24 @@ def check_slip_easyslip(image_url):
             if amount_float < MIN_AMOUNT:
                 return False, 0, None, f"❌ ยอดโอนต่ำกว่ากำหนด ({amount_float} < {MIN_AMOUNT})"
 
-            # 🕵️‍♂️ 3. เช็คชื่อผู้รับ (Loop Check)
+            # 🕵️‍♂️ 3. เช็คชื่อผู้รับ (ฉลาดขึ้น: ถ้า API ไม่ส่งชื่อมา ให้ปล่อยผ่าน)
             receiver_info = slip_data.get('receiver', {})
             receiver_name = receiver_info.get('displayName', '') or receiver_info.get('name', '')
             
-            name_matched = False
-            for name in EXPECTED_NAMES:
-                if name in receiver_name:
-                    name_matched = True
-                    break
-            
-            if not name_matched:
-                print(f"Fraud: Receiver '{receiver_name}' not in list")
-                return False, 0, None, f"❌ ชื่อผู้รับเงินในสลิปไม่ถูกต้อง (โอนให้: {receiver_name})"
+            if receiver_name: # ถ้ามีชื่อส่งมา ค่อยเช็ค
+                name_matched = False
+                for name in EXPECTED_NAMES:
+                    if name in receiver_name:
+                        name_matched = True
+                        break
+                
+                if not name_matched:
+                    print(f"Fraud: Receiver '{receiver_name}' not in list")
+                    return False, 0, None, f"❌ ชื่อผู้รับเงินในสลิปไม่ถูกต้อง (โอนให้: {receiver_name})"
+            else:
+                print("⚠️ API ไม่ส่งชื่อผู้รับมา -> ข้ามการเช็คชื่อ (ถือว่าผ่าน)")
 
-            # ⏰ 4. เช็คเวลา (5 นาที)
+            # ⏰ 4. เช็คเวลา (5-10 นาที)
             try:
                 slip_date_str = f"{slip_data['date']} {slip_data['time']}"
                 if "." in slip_date_str: slip_date_str = slip_date_str.split(".")[0]
@@ -176,16 +181,16 @@ def check_slip_easyslip(image_url):
                 time_diff = (now - slip_dt).total_seconds() / 60
                 
                 print(f"Time Diff: {time_diff:.2f} mins")
-                if time_diff > 5: 
-                    return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) รับเฉพาะสลิปใหม่ไม่เกิน 5 นาที"
+                if time_diff > 10: 
+                    return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) หมดอายุ"
             except:
                 pass 
 
             return True, amount_float, trans_ref, "OK"
         else:
-            return False, 0, None, data.get('message', 'Error')
+            return False, 0, None, data.get('message', 'สลิปไม่ถูกต้อง หรือไม่ชัดเจน')
     except Exception as e:
-        return False, 0, None, str(e)
+        return False, 0, None, f"System Error: {str(e)}"
 
 # =================================================================
 # 📝 หน้าต่างกรอกจำนวนเงิน (Modal)
@@ -335,3 +340,4 @@ async def on_message(message):
 server_on()
 # ⚠️⚠️⚠️ เปลี่ยนเป็น Token ของคุณ ⚠️⚠️⚠️
 bot.run(os.getenv('TOKEN'))
+
