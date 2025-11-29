@@ -189,7 +189,7 @@ async def on_ready():
 @app_commands.default_permissions(administrator=True)
 async def setup(interaction):
     description_text = (
-        "ยินดีต้อนรับสู่ **PREMIUM STORE** ระบบอัตโนมัติ 24 ชม.\n"
+        "ยินดีต้อนรับสู่ **💻 NEW PROJECT!** ระบบอัตโนมัติ 24 ชม.\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "📜 **ขั้นตอนการสั่งซื้อสินค้า**\n"
         "1️⃣ กดปุ่ม **`เติมเงิน (QR Code)`** และส่งสลิปเพื่อเติมเครดิต\n"
@@ -243,3 +243,4 @@ async def on_message(message):
 server_on()
 # ⚠️ อย่าลืมใส่ TOKEN บอทบรรทัดนี้ด้วยนะครับ
 bot.run(os.getenv('TOKEN'))
+
