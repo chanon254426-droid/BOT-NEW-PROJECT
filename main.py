@@ -4,25 +4,27 @@ from discord.ext import commands
 from discord import app_commands
 import json
 import requests
+import io # ใช้สำหรับจัดการไฟล์รูปภาพ
 from myserver import server_on
 
 # =================================================================
-# ⚙️ ส่วนที่ 1: ตั้งค่าบอท (แก้ไขข้อมูลตรงนี้)
+# ⚙️ ส่วนที่ 1: ตั้งค่าบอท
 # =================================================================
 
-DISCORD_BOT_TOKEN = os.environ.get('TOKEN') # ใส่ Token บอท
-EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'  # ใส่ API Key EasySlip
+DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
+# ใส่ API Key ของ EasySlip (โค้ดจะช่วยลบช่องว่างหัวท้ายให้เองกันพลาด)
+EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip() 
 
 # ID ห้องต่างๆ
-SHOP_CHANNEL_ID = 1416797606180552714  # ห้องขายของ
-SLIP_CHANNEL_ID = 1416797464350167090  # ห้องส่งสลิป
-ADMIN_LOG_ID = 1441466742885978144    # ห้อง Log
+SHOP_CHANNEL_ID = 1416797606180552714  
+SLIP_CHANNEL_ID = 1416797464350167090  
+ADMIN_LOG_ID = 1441466742885978144     
 
-# 🖼️ ลิงก์รูปภาพ (แก้ตรงนี้)
+# ลิงก์รูปภาพ
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
-SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360' # <--- ⚠️ เอาลิงก์ GIF มาใส่ตรงนี้ครับ
+SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 
-# 📦 รายการสินค้า 14 ชิ้น (แก้ไขอีโมจิ item12 แล้ว)
+# 📦 รายการสินค้า (อีโมจิถูกต้อง)
 PRODUCTS = [
     {"id": "item1",  "emoji": "⭐",  "name": "𝙳𝙾𝙽𝙰𝚃𝙴",        "price": 89,  "role_id": 1431279741440364625},
     {"id": "item2",  "emoji": "👻",  "name": "ᴍᴏᴅ ᴅᴇᴠᴏᴜʀ",     "price": 120, "role_id": 1432064283767738571},
@@ -60,6 +62,7 @@ def get_balance(user_id):
 def add_balance(user_id, amount):
     db = load_db()
     uid = str(user_id)
+    # ใช้วิธีบวกเพิ่มจากยอดเดิม (ตัดปัญหาข้อมูลทับกัน)
     db[uid] = db.get(uid, 0) + amount
     save_db(db)
     return db[uid]
@@ -74,14 +77,26 @@ def deduct_balance(user_id, amount):
         return True
     return False
 
+# 🔥 ฟังก์ชันใหม่: ส่งไฟล์รูปภาพโดยตรง (แก้ Invalid Image)
 def check_slip_easyslip(image_url):
     try:
+        # 1. โหลดรูปภาพจาก Discord มาเก็บในความจำชั่วคราว
+        img_response = requests.get(image_url)
+        if img_response.status_code != 200:
+            return False, 0, "ไม่สามารถดาวน์โหลดรูปจาก Discord ได้"
+        
+        # 2. เตรียมไฟล์เพื่อส่ง (Multipart File Upload)
+        # ตั้งชื่อไฟล์หลอกๆว่า slip.jpg เพื่อให้ API รู้ว่าเป็นรูป
+        files = {'file': ('slip.jpg', io.BytesIO(img_response.content), 'image/jpeg')}
+        
+        # 3. ส่งไปให้ EasySlip
         response = requests.post(
             "https://developer.easyslip.com/api/v1/verify",
             headers={'Authorization': f'Bearer {EASYSLIP_API_KEY}'},
-            json={'image': image_url},
-            timeout=10
+            files=files, # ส่งเป็นไฟล์ แทนที่จะเป็น JSON URL
+            timeout=15
         )
+        
         data = response.json()
         if response.status_code == 200 and data['status'] == 200:
             return True, data['data']['amount'], "OK"
@@ -91,18 +106,22 @@ def check_slip_easyslip(image_url):
         return False, 0, str(e)
 
 # =================================================================
-# 🖥️ ส่วนที่ 3: UI รวม (Button + Dropdown)
+# 🖥️ ส่วนที่ 3: UI
 # =================================================================
 
 class MainShopView(discord.ui.View):
     def __init__(self): super().__init__(timeout=None)
     
-    # --- แถวที่ 1 : ปุ่มกด (Buttons) ---
     @discord.ui.button(label="เติมเงิน (QR Code)", style=discord.ButtonStyle.primary, emoji="💳", row=0, custom_id="topup_btn")
     async def topup(self, interaction, button):
         embed = discord.Embed(
             title="🏦 เติมเงินอัตโนมัติ (Auto Topup)",
-            description=f"1. สแกน QR Code เพื่อโอนเงิน\n2. ส่งสลิปที่ห้อง <#{SLIP_CHANNEL_ID}>\n3. รอระบบตรวจสอบและเพิ่มเครดิตทันที", 
+            description=(
+                f"1. สแกน QR Code เพื่อโอนเงิน\n"
+                f"2. นำรูปสลิปส่งที่ห้อง <#{SLIP_CHANNEL_ID}>\n"
+                f"3. ระบบจะตรวจสอบยอดเงินและเพิ่มเข้ากระเป๋าคุณ **โดยอัตโนมัติ**\n"
+                f"(ไม่ต้องกลัวยอดทับกัน ระบบแยกกระเป๋าตามชื่อผู้ใช้ครับ ✅)"
+            ), 
             color=discord.Color.gold()
         )
         embed.set_image(url=QR_CODE_URL)
@@ -117,12 +136,11 @@ class MainShopView(discord.ui.View):
     async def clear(self, interaction, button):
         await interaction.response.send_message("🗑️ ล้างการเลือกเรียบร้อยแล้ว", ephemeral=True)
 
-    # --- แถวที่ 2 : รายการสินค้า (Dropdown) ---
     @discord.ui.select(
         placeholder="🛒 คลิกเพื่อเลือกสินค้าที่ต้องการซื้อ...",
         options=[
             discord.SelectOption(
-                label=f"{p['name']}", # ชื่อสินค้า
+                label=f"{p['name']}",
                 value=p["id"], 
                 description=f"ราคา {p['price']} บาท",
                 emoji=p["emoji"]
@@ -170,7 +188,6 @@ async def on_ready():
 @bot.tree.command(name="setup_shop", description="[Admin] สร้างหน้าต่างร้านค้า (GIF + Instructions)")
 @app_commands.default_permissions(administrator=True)
 async def setup(interaction):
-    # ข้อความคำอธิบายแบบหรูๆ (ตามที่คุณขอ)
     description_text = (
         "ยินดีต้อนรับสู่ **PREMIUM STORE** ระบบอัตโนมัติ 24 ชม.\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -191,11 +208,10 @@ async def setup(interaction):
         color=discord.Color.from_rgb(47, 49, 54) 
     )
     
-    # ใส่รูป GIF ที่คุณจะเอาลิงก์มาใส่
     if SHOP_GIF_URL.startswith("http"):
         embed_shop.set_image(url=SHOP_GIF_URL)
     else:
-        embed_shop.set_footer(text="⚠️ อย่าลืมใส่ลิงก์รูป GIF ในโค้ดบรรทัดที่ 26")
+        embed_shop.set_footer(text="⚠️ อย่าลืมใส่ลิงก์รูป GIF")
 
     await interaction.channel.send(embed=embed_shop, view=MainShopView())
     await interaction.response.send_message("✅ สร้างร้านค้าเรียบร้อย!", ephemeral=True)
@@ -206,9 +222,12 @@ async def on_message(message):
 
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
         status_msg = await message.channel.send(f"⏳ ระบบกำลังตรวจสอบสลิปของ {message.author.mention} ...")
+        
+        # เรียกใช้ฟังก์ชันใหม่ (ส่งไฟล์รูป)
         success, amount, result_msg = check_slip_easyslip(message.attachments[0].url)
         
         if success:
+            # ระบบจะเติมเงินให้เฉพาะคนส่ง (message.author.id) ไม่มียอดทับกันแน่นอน
             new_bal = add_balance(message.author.id, amount)
             success_embed = discord.Embed(title="✅ เติมเงินสำเร็จ!", color=discord.Color.green())
             success_embed.description = f"**ผู้เติม:** {message.author.mention}\n**จำนวนเงิน:** `{amount} บาท`\n**ยอดเงินคงเหลือ:** `{new_bal} บาท`"
@@ -222,5 +241,5 @@ async def on_message(message):
     await bot.process_commands(message)
 
 server_on()
+# ⚠️ อย่าลืมใส่ TOKEN บอทบรรทัดนี้ด้วยนะครับ
 bot.run(os.getenv('TOKEN'))
-
