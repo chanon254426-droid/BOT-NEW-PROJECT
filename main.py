@@ -9,7 +9,7 @@ import traceback
 from myserver import server_on
 
 # =================================================================
-# ⚙️ ส่วนที่ 1: ตั้งค่าบอท
+# ⚙️ ตั้งค่าบอท
 # =================================================================
 
 # ⚠️ แก้ไข: ใส่ Token บอทของคุณตรงนี้
@@ -18,12 +18,10 @@ DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 # API Key EasySlip (ตัดช่องว่างให้แล้ว)
 EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 
-# ID ห้องต่างๆ (ตรวจสอบเลขห้องให้ถูกต้อง)
 SHOP_CHANNEL_ID = 1416797606180552714  
 SLIP_CHANNEL_ID = 1416797464350167090  
 ADMIN_LOG_ID = 1441466742885978144     
 
-# ลิงก์รูปภาพ
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 
@@ -70,15 +68,17 @@ def save_db(data):
 def get_balance(user_id):
     db = load_db()
     raw_val = db.get(str(user_id), 0.0)
-    if isinstance(raw_val, (dict, list)): return 0.0
+    # ป้องกันค่าเป็น Dict
+    if isinstance(raw_val, dict): return 0.0
     return float(raw_val)
 
 def add_balance(user_id, amount):
     db = load_db()
     uid = str(user_id)
-    current = get_balance(uid) 
+    current = get_balance(uid)
     try:
-        new_bal = current + float(amount)
+        add_val = float(amount)
+        new_bal = current + add_val
         db[uid] = new_bal
         save_db(db)
         return new_bal
@@ -96,8 +96,9 @@ def deduct_balance(user_id, amount):
         return True
     return False
 
+# 🔥 แก้ไขฟังก์ชันเช็คสลิป (แก้ API Error)
 def check_slip_easyslip(image_url):
-    print(f"Checking slip: {image_url}")
+    print(f"กำลังเช็คสลิป: {image_url}")
     try:
         img_response = requests.get(image_url)
         if img_response.status_code != 200: return False, 0, "โหลดรูปไม่ได้"
@@ -110,14 +111,20 @@ def check_slip_easyslip(image_url):
         )
         
         data = response.json()
+        
         if response.status_code == 200 and data['status'] == 200:
             raw_amount = data['data']['amount']
-            # ป้องกันกรณี API เพี้ยน
-            if isinstance(raw_amount, dict): return False, 0, "API Error"
+            
+            # ✅ แก้ไขตรงนี้: ถ้าส่งมาเป็น Dict ให้ดึงค่าออกมา
+            if isinstance(raw_amount, dict):
+                print(f"⚠️ API ส่ง Dict: {raw_amount}")
+                raw_amount = raw_amount.get('amount', 0)
+            
             return True, float(raw_amount), "OK"
         else:
             return False, 0, data.get('message', 'Error')
     except Exception as e:
+        print(f"API Error: {e}")
         return False, 0, str(e)
 
 # =================================================================
@@ -131,7 +138,7 @@ class TopupModal(discord.ui.Modal, title="เติมเงินเข้า�
         placeholder="เช่น 50, 100, 150", 
         style=discord.TextStyle.short,
         min_length=1,
-        max_length=5
+        max_length=6
     )
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -159,10 +166,9 @@ class TopupModal(discord.ui.Modal, title="เติมเงินเข้า�
 class MainShopView(discord.ui.View):
     def __init__(self): super().__init__(timeout=None)
     
-    # 🟢 แก้ไขปุ่มเติมเงิน ให้เด้ง Modal แทน
+    # 🟢 ปุ่มเติมเงิน -> เด้ง Modal
     @discord.ui.button(label="เติมเงิน (QR Code)", style=discord.ButtonStyle.primary, emoji="💳", row=0, custom_id="topup_btn")
     async def topup(self, interaction, button):
-        # เด้งหน้าต่างให้กรอกเงิน
         await interaction.response.send_modal(TopupModal())
 
     @discord.ui.button(label="เช็คยอดเงิน", style=discord.ButtonStyle.success, emoji="💰", row=0, custom_id="check_bal")
@@ -211,7 +217,7 @@ async def on_ready():
 @bot.tree.command(name="setup_shop", description="[Admin] สร้างหน้าต่างร้านค้า")
 @app_commands.default_permissions(administrator=True)
 async def setup(interaction):
-    await interaction.response.defer(ephemeral=True) # กัน Time out
+    await interaction.response.defer(ephemeral=True) # กัน Timeout
 
     description_text = (
         "ยินดีต้อนรับสู่ **💻 NEW PROJECT!** ระบบอัตโนมัติ 24 ชม.\n"
@@ -243,23 +249,16 @@ async def setup(interaction):
 async def on_message(message):
     if message.author.bot: return
 
-    # เช็คว่าส่งในห้องสลิปไหม
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิปของ {message.author.mention} ...")
+        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Modal Mode)")
         
         try:
-            # 1. เช็คสลิปกับ API (เพื่อดูยอดเงินจริง)
             success, amount, result_msg = check_slip_easyslip(message.attachments[0].url)
             
             if success:
-                # 2. เติมเงินเข้ากระเป๋า (ตามยอดจริงจากสลิป)
                 new_bal = add_balance(message.author.id, amount)
-                
                 success_embed = discord.Embed(title="✅ เติมเงินสำเร็จ!", color=discord.Color.green())
-                success_embed.add_field(name="ผู้ใช้งาน", value=message.author.mention, inline=True)
-                success_embed.add_field(name="ยอดเงินที่เติม", value=f"{amount:.2f} บาท", inline=True)
-                success_embed.add_field(name="ยอดเงินคงเหลือ", value=f"{new_bal:.2f} บาท", inline=False)
-                success_embed.set_footer(text="ขอบคุณที่ใช้บริการครับ")
+                success_embed.description = f"**จำนวน:** `{amount} บาท`\n**คงเหลือ:** `{new_bal} บาท`"
                 
                 await status_msg.delete()
                 await message.channel.send(content=message.author.mention, embed=success_embed)
@@ -267,7 +266,7 @@ async def on_message(message):
                 if log := bot.get_channel(ADMIN_LOG_ID):
                     await log.send(f"💰 {message.author.mention} เติม {amount} บาท")
             else:
-                await status_msg.edit(content=f"❌ **ตรวจสอบไม่ผ่าน**: `{result_msg}`")
+                await status_msg.edit(content=f"❌ ไม่ผ่าน: `{result_msg}`")
 
         except Exception as e:
             print(traceback.format_exc())
@@ -276,5 +275,5 @@ async def on_message(message):
     await bot.process_commands(message)
 
 server_on()
-# ⚠️⚠️⚠️ อย่าลืมใส่ TOKEN บอทตรงนี้ ⚠️⚠️⚠️
+# ⚠️⚠️⚠️ เปลี่ยนเป็น Token ของคุณ ⚠️⚠️⚠️
 bot.run(os.getenv('TOKEN'))
