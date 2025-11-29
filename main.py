@@ -213,7 +213,7 @@ def check_slip_easyslip(image_url):
                     print(f"⏳ Diff: {time_diff:.2f} mins")
                     
                     if time_diff > 5: 
-                        return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) รับเฉพาะสลิปใหม่ไม่เกิน 5 นาที"
+                        return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว)"
                     
                     if time_diff < -5:
                         return False, 0, None, "❌ เวลาในสลิปผิดปกติ (อนาคต)"
@@ -353,4 +353,5 @@ async def on_message(message):
 server_on()
 # ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
+
 
