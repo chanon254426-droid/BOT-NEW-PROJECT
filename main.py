@@ -13,10 +13,10 @@ from myserver import server_on
 # ⚙️ ส่วนที่ 1: ตั้งค่าบอท
 # =================================================================
 
-# ⚠️⚠️⚠️ แก้ไข: เอา Token บอทของคุณมาใส่ตรงนี้ ⚠️⚠️⚠️
+# ⚠️ แก้ไข: ใส่ Token บอท
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
 
-# API Key EasySlip (ตัดช่องว่างให้แล้ว)
+# API Key EasySlip
 EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 
 # ID ห้องต่างๆ
@@ -119,12 +119,12 @@ def save_used_slip(trans_ref):
     with open(SLIP_DB_FILE, "w") as f:
         json.dump(used_slips, f, indent=4)
 
-# 🔥 ระบบเช็คสลิป (เวลา + ซ้ำ + ยอดเงิน)
+# 🔥 แก้ไข: ระบบเช็คสลิปแบบเข้มงวด (Strict Security)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
         img_response = requests.get(image_url)
-        if img_response.status_code != 200: return False, 0, None, "โหลดรูปไม่ได้"
+        if img_response.status_code != 200: return False, 0, None, "ดาวน์โหลดรูปไม่สำเร็จ"
         
         files = {'file': ('slip.jpg', io.BytesIO(img_response.content), 'image/jpeg')}
         response = requests.post(
@@ -140,40 +140,43 @@ def check_slip_easyslip(image_url):
             raw_amount = slip_data['amount']
             trans_ref = slip_data['transRef']
             
-            # ⏰ เช็คเวลา (ต้องไม่เกิน 5 นาที)
+            # ⏰ ระบบเช็คเวลาแบบปลอดภัยสูงสุด
             try:
                 slip_date_str = f"{slip_data['date']} {slip_data['time']}"
+                
+                # รองรับรูปแบบวันที่หลายแบบ (มีจุดทศนิยมหรือไม่มีก็ต้องอ่านได้)
                 if "." in slip_date_str:
-                    slip_date_str = slip_date_str.split(".")[0]
+                    slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S.%f")
+                else:
+                    slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
                 
-                slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
-                
-                # เวลาปัจจุบัน (UTC+7 Thailand)
                 now = datetime.utcnow() + timedelta(hours=7)
-                
-                # หาผลต่างเวลา (นาที)
                 time_diff = (now - slip_dt).total_seconds() / 60
                 
                 print(f"Time Diff: {time_diff:.2f} mins")
                 
-                if time_diff > 5:
-                    return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) รับเฉพาะสลิปใหม่ไม่เกิน 5 นาที"
+                # กฎเหล็ก 1: สลิปเก่าเกิน 10 นาที -> ดีดออก
+                if time_diff > 10: 
+                    return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว) หมดอายุ"
                 
-                if time_diff < -2:
-                     print("⚠️ Warning: สลิปมาจากอนาคต? หรือนาฬิกา Server ไม่ตรง")
+                # กฎเหล็ก 2: เวลาติดลบผิดปกติ (เกิน 5 นาที) -> ดีดออก
+                if time_diff < -5:
+                    return False, 0, None, f"❌ เวลาในสลิปผิดปกติ (อนาคต) โปรดตรวจสอบวันที่ในมือถือ"
 
             except Exception as e:
-                print(f"❌ Time Check Error: {e}")
-                return False, 0, None, "ไม่สามารถตรวจสอบเวลาในสลิปได้ (รูปแบบวันที่ผิด)"
+                # ⚠️ ถ้าอ่านเวลาไม่ได้ (Error) ให้ดีดออกเลย ห้ามปล่อยผ่าน
+                print(f"Time Check Failed: {e}")
+                return False, 0, None, "❌ ไม่สามารถตรวจสอบวันที่ในสลิปได้ (Refused)" 
 
+            # จัดการยอดเงิน
             if isinstance(raw_amount, dict):
                 raw_amount = raw_amount.get('amount', 0)
             
             return True, float(raw_amount), trans_ref, "OK"
         else:
-            return False, 0, None, data.get('message', 'Error')
+            return False, 0, None, data.get('message', 'สลิปไม่ถูกต้อง หรือไม่ชัดเจน')
     except Exception as e:
-        return False, 0, None, str(e)
+        return False, 0, None, f"System Error: {str(e)}"
 
 # =================================================================
 # 📝 หน้าต่างกรอกจำนวนเงิน (Modal)
@@ -189,29 +192,21 @@ class TopupModal(discord.ui.Modal, title="เติมเงินเข้า�
 
     async def on_submit(self, interaction: discord.Interaction):
         input_amount = self.amount.value
-        
-        # สร้างใบแจ้งยอด (Invoice) แบบมืออาชีพ
         embed = discord.Embed(
             title="🧾 ใบแจ้งการชำระเงิน (Invoice)",
-            description=f"กรุณาโอนเงินจำนวน **{input_amount} บาท** ผ่าน QR Code ด้านล่างนี้",
+            description=f"กรุณาโอนเงินจำนวน **{input_amount} บาท** ผ่าน QR Code ด้านล่าง",
             color=discord.Color.from_rgb(255, 215, 0)
         )
         embed.add_field(name="1. สแกน QR Code", value="ใช้แอปธนาคารสแกนได้ทันที", inline=False)
         embed.add_field(name="2. บันทึกสลิป", value="เมื่อโอนเสร็จให้บันทึกรูปสลิปไว้", inline=False)
-        embed.add_field(name="3. ยืนยันการเติมเงิน", value=f"👉 นำรูปสลิปไปส่งที่ห้อง <#{SLIP_CHANNEL_ID}>\n⚠️ **(ต้องส่งภายใน 5 นาทีหลังโอน)**", inline=False)
+        embed.add_field(name="3. ยืนยันการเติมเงิน", value=f"👉 นำรูปสลิปไปส่งที่ห้อง <#{SLIP_CHANNEL_ID}>\n⚠️ **(ต้องส่งภายใน 10 นาทีหลังโอน)**", inline=False)
         embed.set_footer(text=f"User: {interaction.user.name} | ระบบอัตโนมัติ 24 ชม.")
         embed.set_image(url=QR_CODE_URL)
-
         await interaction.response.send_message(embed=embed, ephemeral=True)
-
-# =================================================================
-# 🖥️ UI หลัก
-# =================================================================
 
 class MainShopView(discord.ui.View):
     def __init__(self): super().__init__(timeout=None)
     
-    # ปุ่มเติมเงิน -> เรียก Modal
     @discord.ui.button(label="เติมเงิน (QR Code)", style=discord.ButtonStyle.primary, emoji="💳", row=0, custom_id="topup_btn")
     async def topup(self, interaction, button):
         await interaction.response.send_modal(TopupModal())
@@ -290,7 +285,7 @@ async def on_message(message):
     if message.author.bot: return
 
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Anti-Old Slip 5m)")
+        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Strict Mode)")
         
         try:
             # 1. เช็คสลิป (ได้เวลา และ รหัสอ้างอิง)
