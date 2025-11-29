@@ -6,7 +6,7 @@ import json
 import requests
 import io
 import traceback
-import re # เพิ่มตัวช่วยแกะข้อความ
+import re
 from datetime import datetime, timedelta
 from myserver import server_on
 
@@ -14,22 +14,20 @@ from myserver import server_on
 # ⚙️ ส่วนที่ 1: ตั้งค่าบอท
 # =================================================================
 
-# ⚠️⚠️⚠️ แก้ไข: เอา Token บอทของคุณมาใส่ตรงนี้ ⚠️⚠️⚠️
-DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
+# ⚠️ แก้ไข: ใส่ Token บอทของคุณตรงนี้
+DISCORD_BOT_TOKEN = os.environ.get('TOKEN')  
 
-# API Key EasySlip (ตัดช่องว่างให้แล้ว)
+# API Key EasySlip
 EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 
-# ID ห้องต่างๆ
 SHOP_CHANNEL_ID = 1416797606180552714  
 SLIP_CHANNEL_ID = 1416797464350167090  
 ADMIN_LOG_ID = 1441466742885978144     
 
-# ลิงก์รูปภาพ
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 
-# 🔥 [SMART CHECK] ตั้งค่าความปลอดภัย
+# 🔥 [SMART CHECK]
 EXPECTED_NAMES = ['ชานนท์', 'Chanon', 'chanon'] 
 MIN_AMOUNT = 1.00 
 
@@ -123,12 +121,9 @@ def save_used_slip(trans_ref):
     with open(SLIP_DB_FILE, "w") as f:
         json.dump(used_slips, f, indent=4)
 
-# 🔥 แก้ไข: ระบบแกะวันที่แบบครอบจักรวาล (Universal Date Parser)
+# 🔥 แก้ไข: ระบบเช็คสลิป (Strict Time: อ่านเวลาไม่ได้ = ไม่ให้ผ่าน)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
-    # กำหนดค่าเริ่มต้นกัน Error
-    raw_date = "Unknown"
-    
     try:
         img_response = requests.get(image_url)
         if img_response.status_code != 200: return False, 0, None, "ดาวน์โหลดรูปไม่สำเร็จ"
@@ -146,15 +141,16 @@ def check_slip_easyslip(image_url):
             slip_data = data['data']
             trans_ref = slip_data['transRef']
             
-            # 1. ยอดเงิน
+            # 1. จัดการยอดเงิน
             raw_amount = slip_data['amount']
             if isinstance(raw_amount, dict): raw_amount = raw_amount.get('amount', 0)
             amount_float = float(raw_amount)
 
+            # 💰 2. เช็คยอดขั้นต่ำ
             if amount_float < MIN_AMOUNT:
                 return False, 0, None, f"❌ ยอดโอนต่ำกว่ากำหนด ({amount_float} < {MIN_AMOUNT})"
 
-            # 2. ชื่อผู้รับ (ถ้ามี)
+            # 🕵️‍♂️ 3. เช็คชื่อผู้รับ (ถ้ามีชื่อส่งมา ต้องเช็ค)
             receiver_info = slip_data.get('receiver', {})
             receiver_name = receiver_info.get('displayName', '') or receiver_info.get('name', '')
             
@@ -165,84 +161,110 @@ def check_slip_easyslip(image_url):
                         name_matched = True
                         break
                 if not name_matched:
-                    return False, 0, None, f"❌ ชื่อผู้รับในสลิปไม่ถูกต้อง (โอนให้: {receiver_name})"
+                    return False, 0, None, f"❌ ชื่อผู้รับเงินในสลิปไม่ถูกต้อง (โอนให้: {receiver_name})"
 
-            # 3. เช็คเวลา (Robust Mode)
+            # ⏰ 4. เช็คเวลา (Strict Mode 100%)
             try:
-                # ดึงข้อมูลวันที่ดิบๆ ออกมา
-                raw_date = str(slip_data.get('date', ''))
-                raw_time = str(slip_data.get('time', ''))
+                slip_date_str = f"{slip_data['date']} {slip_data['time']}"
                 
-                # รวมร่างเป็น string เดียวกัน
-                full_dt_str = f"{raw_date} {raw_time}"
-                
-                # 🧹 Clean Up: ลบตัวอักษรขยะออกให้หมด (T, Z, +07:00)
-                clean_str = full_dt_str.replace('T', ' ').replace('Z', '')
-                clean_str = re.sub(r'\+.*', '', clean_str) # ตัด timezone ทิ้ง
-                clean_str = clean_str.strip()
-                
-                print(f"🕒 Raw Date: {full_dt_str} -> Clean: {clean_str}")
+                # ทำความสะอาดข้อมูลวันที่ (แก้ปัญหา T, +, และทศนิยม)
+                slip_date_str = slip_date_str.replace("T", " ").replace("Z", "")
+                slip_date_str = re.sub(r'\+.*', '', slip_date_str).strip()
+                if "." in slip_date_str: slip_date_str = slip_date_str.split(".")[0]
 
-                # ลองแปลงหลายๆ รูปแบบ
-                slip_dt = None
-                formats = [
-                    "%Y-%m-%d %H:%M:%S",      # 2025-11-29 14:30:00
-                    "%Y-%m-%d %H:%M:%S.%f",   # 2025-11-29 14:30:00.123
-                    "%d/%m/%Y %H:%M:%S",      # 29/11/2025 14:30:00
-                    "%Y-%m-%d"                # กรณีไม่มีเวลา
-                ]
+                # แปลงวันที่
+                slip_dt = datetime.strptime(slip_date_str, "%Y-%m-%d %H:%M:%S")
                 
-                for fmt in formats:
-                    try:
-                        slip_dt = datetime.strptime(clean_str, fmt)
-                        break
-                    except ValueError:
-                        continue
-                
-                if not slip_dt:
-                    # ถ้าแปลงไม่ได้จริงๆ ให้แจ้งแอดมิน (แต่ API ยืนยันสลิปแล้ว)
-                    print("⚠️ Date Parse Failed -> Skip Time Check")
-                else:
-                    # ถ้าปีเป็น พ.ศ. (เช่น 2568)
-                    if slip_dt.year > 2500:
-                        slip_dt = slip_dt.replace(year=slip_dt.year - 543)
+                # แก้ปี พ.ศ. (ถ้าปีมากกว่า 2500 ลบ 543)
+                if slip_dt.year > 2500:
+                    slip_dt = slip_dt.replace(year=slip_dt.year - 543)
 
-                    now = datetime.utcnow() + timedelta(hours=7)
-                    time_diff = (now - slip_dt).total_seconds() / 60
-                    
-                    print(f"⏳ Diff: {time_diff:.2f} mins")
-                    
-                    if time_diff > 5: 
-                        return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว)"
-                    
-                    if time_diff < -5:
-                        return False, 0, None, "❌ เวลาในสลิปผิดปกติ (อนาคต)"
+                now = datetime.utcnow() + timedelta(hours=7)
+                time_diff = (now - slip_dt).total_seconds() / 60
+                
+                print(f"Slip Time: {slip_dt} | Now: {now} | Diff: {time_diff:.2f} mins")
+                
+                # ❌ ถ้าเก่าเกิน 5 นาที ดีดออกทันที
+                if time_diff > 5: 
+                    return False, 0, None, f"❌ สลิปเก่าเกินไป ({int(time_diff)} นาทีที่แล้ว)"
+                
+                # ❌ ถ้าเป็นเวลาอนาคตเกิน 5 นาที (นาฬิกาเพี้ยน) ดีดออก
+                if time_diff < -5:
+                    return False, 0, None, "❌ เวลาในสลิปผิดปกติ (อนาคต)"
 
             except Exception as e:
                 print(f"Time Check Error: {e}")
-                # ถ้า Error ตรงนี้ ให้ปล่อยผ่านไปก่อนเพราะ API ยืนยันแล้วว่าสลิปถูก
-                pass
+                # ⚠️ กฎเหล็ก: ถ้าอ่านเวลาไม่ได้ ให้ถือว่าไม่ผ่าน (ป้องกันสลิปปลอม/สลิปเก่า)
+                return False, 0, None, "❌ ไม่สามารถตรวจสอบวันที่ในสลิปได้ (รูปแบบวันที่ไม่รองรับ)" 
 
             return True, amount_float, trans_ref, "OK"
         else:
             return False, 0, None, data.get('message', 'สลิปไม่ถูกต้อง หรือไม่ชัดเจน')
     except Exception as e:
-        return False, 0, None, f"System Error: {str(e)} ({raw_date})"
+        return False, 0, None, f"System Error: {str(e)}"
 
 # =================================================================
-# 🖥️ UI & Main Logic
+# 🛒 View ยืนยันการสั่งซื้อ
+# =================================================================
+
+class ConfirmBuyView(discord.ui.View):
+    def __init__(self, product, user_id):
+        super().__init__(timeout=60)
+        self.product = product
+        self.user_id = user_id
+
+    @discord.ui.button(label="✅ ยืนยันการชำระเงิน", style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ ไม่ใช่รายการของคุณ", ephemeral=True)
+
+        user_bal = get_balance(interaction.user.id)
+        price = self.product["price"]
+
+        if user_bal < price:
+            await interaction.response.edit_message(content=f"❌ **เงินไม่พอ!** ขาดอีก `{price - user_bal}` บาท\n(กรุณาเติมเงินก่อน)", view=None, embed=None)
+            return
+
+        if deduct_balance(interaction.user.id, price):
+            role = interaction.guild.get_role(self.product["role_id"])
+            if role:
+                try:
+                    await interaction.user.add_roles(role)
+                    embed = discord.Embed(title="🎉 สั่งซื้อสำเร็จ!", description=f"✅ คุณได้รับยศ {role.mention} เรียบร้อยแล้ว", color=discord.Color.green())
+                    embed.add_field(name="สินค้า", value=self.product["name"], inline=True)
+                    embed.add_field(name="ราคา", value=f"{price} บาท", inline=True)
+                    embed.add_field(name="คงเหลือ", value=f"{user_bal - price} บาท", inline=True)
+                    await interaction.response.edit_message(content=None, embed=embed, view=None)
+                    
+                    if log := interaction.guild.get_channel(ADMIN_LOG_ID):
+                        await log.send(f"🛒 **[BUY]** {interaction.user.mention} ซื้อ **{self.product['name']}** ราคา {price} บาท")
+                except Exception as e:
+                    await interaction.response.edit_message(content=f"⚠️ เกิดข้อผิดพลาดในการมอบยศ: {e}", view=None, embed=None)
+            else:
+                await interaction.response.edit_message(content="⚠️ ไม่พบยศในเซิร์ฟเวอร์ (กรุณาติดต่อแอดมิน)", view=None, embed=None)
+        else:
+            await interaction.response.edit_message(content="❌ เกิดข้อผิดพลาดในการตัดเงิน", view=None, embed=None)
+
+    @discord.ui.button(label="❌ ยกเลิก", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id: return
+        await interaction.response.edit_message(content="🗑️ ยกเลิกรายการสั่งซื้อเรียบร้อย", view=None, embed=None)
+
+# =================================================================
+# 📝 Modal & Main View
 # =================================================================
 
 class TopupModal(discord.ui.Modal, title="เติมเงินเข้าระบบ (Top Up)"):
-    amount = discord.ui.TextInput(
-        label="ระบุจำนวนเงินที่ต้องการเติม (บาท)", 
-        placeholder="เช่น 50, 100, 150", 
-        style=discord.TextStyle.short,
-        min_length=1, max_length=6
-    )
+    amount = discord.ui.TextInput(label="ระบุจำนวนเงิน (บาท)", placeholder="เช่น 50", style=discord.TextStyle.short, min_length=1, max_length=6)
 
     async def on_submit(self, interaction: discord.Interaction):
-        input_amount = self.amount.value
+        input_amount = self.amount.value.strip()
+        try:
+            float(input_amount)
+        except ValueError:
+            await interaction.response.send_message("❌ กรุณากรอกเป็นตัวเลขเท่านั้น", ephemeral=True)
+            return
+
         embed = discord.Embed(
             title="🧾 ใบแจ้งการชำระเงิน (Invoice)",
             description=f"กรุณาโอนเงินจำนวน **{input_amount} บาท** ผ่าน QR Code ด้านล่างนี้",
@@ -251,7 +273,7 @@ class TopupModal(discord.ui.Modal, title="เติมเงินเข้า�
         embed.add_field(name="1. สแกน QR Code", value="ใช้แอปธนาคารสแกนได้ทันที", inline=False)
         embed.add_field(name="2. บันทึกสลิป", value="เมื่อโอนเสร็จให้บันทึกรูปสลิปไว้", inline=False)
         embed.add_field(name="3. ยืนยันการเติมเงิน", value=f"👉 นำรูปสลิปไปส่งที่ห้อง <#{SLIP_CHANNEL_ID}>\n⚠️ **(ต้องส่งภายใน 5 นาทีหลังโอน)**", inline=False)
-        embed.set_footer(text=f"User: {interaction.user.name} | ระบบอัตโนมัติ 24 ชม.")
+        embed.set_footer(text=f"User: {interaction.user.name}")
         embed.set_image(url=QR_CODE_URL)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -269,7 +291,7 @@ class MainShopView(discord.ui.View):
 
     @discord.ui.button(label="ล้างตัวเลือก", style=discord.ButtonStyle.danger, emoji="🗑️", row=0, custom_id="clear_select")
     async def clear(self, interaction, button):
-        await interaction.response.send_message("🗑️ ล้างการเลือกแล้ว", ephemeral=True)
+        await interaction.response.edit_message(view=MainShopView())
 
     @discord.ui.select(
         placeholder="🛒 เลือกสินค้า...",
@@ -279,14 +301,17 @@ class MainShopView(discord.ui.View):
     async def buy(self, interaction, select):
         pid = select.values[0]
         prod = next(p for p in PRODUCTS if p["id"] == pid)
-        if deduct_balance(interaction.user.id, prod["price"]):
-            role = interaction.guild.get_role(prod["role_id"])
-            if role: await interaction.user.add_roles(role)
-            await interaction.response.send_message(f"✅ ซื้อสำเร็จ! ได้รับยศ {role.mention}", ephemeral=True)
-            if log := interaction.guild.get_channel(ADMIN_LOG_ID):
-                await log.send(f"🛒 {interaction.user.mention} ซื้อ {prod['name']} ({prod['price']} บ.)")
-        else:
-            await interaction.response.send_message(f"❌ เงินไม่พอ! (ขาด {prod['price'] - get_balance(interaction.user.id):.2f})", ephemeral=True)
+        user_bal = get_balance(interaction.user.id)
+        
+        embed = discord.Embed(title="🛒 ยืนยันการสั่งซื้อ", color=discord.Color.blue())
+        embed.description = f"คุณกำลังจะซื้อ: **{prod['name']}**\nราคา: **{prod['price']} บาท**"
+        embed.add_field(name="ยอดเงินคงเหลือของคุณ", value=f"{user_bal} บาท")
+        
+        if user_bal < prod['price']:
+            embed.color = discord.Color.red()
+            embed.set_footer(text="❌ ยอดเงินไม่เพียงพอ กรุณาเติมเงินก่อน")
+        
+        await interaction.response.send_message(embed=embed, view=ConfirmBuyView(prod, interaction.user.id), ephemeral=True)
 
 intents = discord.Intents.default()
 intents.members = True
@@ -324,11 +349,25 @@ async def setup(interaction):
     await interaction.channel.send(embed=embed_shop, view=MainShopView())
     await interaction.followup.send("✅ สร้างร้านค้าเรียบร้อย!")
 
+# 🔥 [NEW COMMAND] คำสั่งแอดมิน: เติมเงินให้ลูกค้า
+@bot.tree.command(name="add_money", description="[Admin] เติมเงินให้ลูกค้า (ใส่ติดลบเพื่อหักเงิน)")
+@app_commands.default_permissions(administrator=True)
+@app_commands.describe(user="ลูกค้าที่ต้องการเติมให้", amount="จำนวนเงิน (บาท)")
+async def add_money_command(interaction: discord.Interaction, user: discord.Member, amount: float):
+    new_bal = add_balance(user.id, amount)
+    embed = discord.Embed(title="💸 ปรับยอดเงินสำเร็จ (Manual)", description=f"จัดการโดย: {interaction.user.mention}", color=discord.Color.green())
+    embed.add_field(name="ลูกค้า", value=user.mention, inline=True)
+    embed.add_field(name="ยอดที่เพิ่ม/ลด", value=f"{amount:+.2f} บาท", inline=True)
+    embed.add_field(name="ยอดคงเหลือ", value=f"{new_bal:.2f} บาท", inline=False)
+    await interaction.response.send_message(embed=embed)
+    if log := bot.get_channel(ADMIN_LOG_ID):
+        await log.send(f"🔧 **[ADMIN]** {interaction.user.mention} ปรับเงินให้ {user.mention} จำนวน {amount} บาท")
+
 @bot.event
 async def on_message(message):
     if message.author.bot: return
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Ultra Robust Mode)")
+        status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป... (Strict V.Final)")
         try:
             success, amount, trans_ref, result_msg = check_slip_easyslip(message.attachments[0].url)
             if success:
