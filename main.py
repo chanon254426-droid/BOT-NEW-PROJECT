@@ -209,7 +209,7 @@ class ConfirmBuyView(discord.ui.View):
         price = self.product["price"]
 
         if user_bal < price:
-            await interaction.response.edit_message(content=f"❌ **เงินไม่พอ!** ขาดอีก `{price - user_bal}` บาท\n(กรุณาเติมเงินก่อน)", view=None, embed=None)
+            await interaction.response.edit_message(content=f"❌ **เงินไม่พอ!** ขาดอีก `{price - user_bal}` บาท", view=None, embed=None)
             return
 
         if deduct_balance(interaction.user.id, price):
@@ -217,41 +217,43 @@ class ConfirmBuyView(discord.ui.View):
             if role:
                 try:
                     await interaction.user.add_roles(role)
-                    # 💎 สร้าง Order ID
                     order_id = str(uuid.uuid4())[:8].upper()
                     now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
                     
-                    # 🔥 สร้าง Embed ใบเสร็จ
-                    embed = discord.Embed(title="🔔 Order Successful", color=discord.Color.from_rgb(50, 255, 120))
+                    # 🔥 สร้าง Embed ใบเสร็จแบบตาราง (Code Block)
+                    embed = discord.Embed(title="✅ สั่งซื้อสำเร็จ | Order Successful", color=discord.Color.green())
                     
-                    embed.add_field(name="👤 ผู้สั่ง", value=f"{interaction.user.mention}", inline=True)
-                    embed.add_field(name="🚀 ระยะเวลา", value="ถาวร", inline=True)
-                    embed.add_field(name="🔗 เซิร์ฟเวอร์", value="[SHOP SERVER](https://discord.gg/your-link)", inline=False)
-                    embed.add_field(name="👤 ชื่อสินค้า", value=f"```{self.product['name']}```", inline=True)
-                    embed.add_field(name="💎 จำนวน", value="1 ชิ้น", inline=True)
-                    embed.add_field(name="💰 ราคารวม", value=f"{price} บาท", inline=True)
-                    embed.add_field(name="🟢 สถานะ", value="**สำเร็จ 100%**", inline=True)
-                    embed.add_field(name="🧾 Order ID", value=f"`{order_id}`", inline=True)
-                    embed.add_field(name="📦 มอบสินค้า", value="เรียบร้อยแล้ว", inline=True)
+                    # จัดข้อความให้ตรงกันด้วย Code Block
+                    receipt_text = (
+                        f"👤 ผู้ซื้อ   : {interaction.user.display_name}\n"
+                        f"📦 สินค้า    : {self.product['name']}\n"
+                        f"💎 ราคา     : {price} บาท\n"
+                        f"🧾 Order ID : {order_id}\n"
+                        f"🗓️ วันที่     : {now_str}"
+                    )
+                    embed.description = f"```yaml\n{receipt_text}\n```"
+                    
+                    embed.add_field(name="💰 ยอดเงินคงเหลือ", value=f"`{user_bal - price} บาท`", inline=True)
+                    embed.add_field(name="📦 สถานะสินค้า", value="`✅ ส่งมอบแล้ว`", inline=True)
                     
                     embed.set_image(url=SUCCESS_GIF_URL)
-                    embed.set_footer(text=f"ขอบคุณที่ใช้บริการครับ • {now_str}", icon_url=interaction.user.display_avatar.url)
+                    embed.set_footer(text=f"ขอบคุณที่ใช้บริการครับ", icon_url=interaction.user.display_avatar.url)
                     
                     await interaction.response.edit_message(content=None, embed=embed, view=None)
                     
                     if log := interaction.guild.get_channel(ADMIN_LOG_ID):
-                        await log.send(f"🛒 **[BUY]** {interaction.user.mention} ซื้อ **{self.product['name']}** ราคา {price} บาท (Order: {order_id})")
+                        await log.send(f"🛒 **[BUY]** {interaction.user.mention} ซื้อ **{self.product['name']}** (ID: {order_id})")
                 except Exception as e:
-                    await interaction.response.edit_message(content=f"⚠️ เกิดข้อผิดพลาดในการมอบยศ: {e}", view=None, embed=None)
+                    await interaction.response.edit_message(content=f"⚠️ มอบยศไม่สำเร็จ: {e}", view=None, embed=None)
             else:
-                await interaction.response.edit_message(content="⚠️ ไม่พบยศในเซิร์ฟเวอร์ (กรุณาติดต่อแอดมิน)", view=None, embed=None)
+                await interaction.response.edit_message(content="⚠️ ไม่พบยศในเซิร์ฟเวอร์", view=None, embed=None)
         else:
-            await interaction.response.edit_message(content="❌ เกิดข้อผิดพลาดในการตัดเงิน", view=None, embed=None)
+            await interaction.response.edit_message(content="❌ ตัดเงินไม่สำเร็จ", view=None, embed=None)
 
     @discord.ui.button(label="❌ ยกเลิก", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id: return
-        await interaction.response.edit_message(content="🗑️ ยกเลิกรายการสั่งซื้อเรียบร้อย", view=None, embed=None)
+        await interaction.response.edit_message(content="🗑️ ยกเลิกรายการเรียบร้อย", view=None, embed=None)
 
 # =================================================================
 # 📝 Modal & Main View
@@ -415,3 +417,4 @@ async def on_message(message):
 server_on()
 # ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
+
