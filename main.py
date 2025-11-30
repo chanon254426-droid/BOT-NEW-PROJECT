@@ -7,6 +7,7 @@ import requests
 import io
 import traceback
 import re
+import asyncio
 import uuid
 from datetime import datetime, timedelta
 from myserver import server_on
@@ -25,13 +26,13 @@ EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 SHOP_CHANNEL_ID = 1416797606180552714  
 SLIP_CHANNEL_ID = 1416797464350167090  
 ADMIN_LOG_ID = 1441466742885978144 
-HISTORY_CHANNEL_ID = 1444390933297631512 
+HISTORY_CHANNEL_ID = 1444390933297631512 # ⚠️ ตรวจสอบว่าเลขนี้ถูกต้อง และบอทมีสิทธิ์ส่งข้อความในห้องนี้
 
 # ลิงก์รูปภาพ
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 # รูป GIF ตอนซื้อสำเร็จ
-SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1425017125558292550/dcbcadc34eb162678bbf022c927b2f53.gif?ex=692d3f1e&is=692bed9e&hm=5e741c7d6f7f2b2c5d4e71e83fa10d862f374cd69ba214ddc18fc4d25c5aeb04&'
+SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF_-_Fire_Force_Sho_Kusakabe_-_Descobrir_e_Compartilhar_GIFs.gif?ex=692d5f76&is=692c0df6&hm=a3344a6e695ceb3a513281745b49616df9e99da3e7960635fa2b94b3b8770ce4&'
 
 # 🔥 [SMART CHECK] ตั้งค่าความปลอดภัย
 EXPECTED_NAMES = ['ชานนท์ ขันทอง', 'Chanon Khantong', 'chanon khantong'] 
@@ -55,35 +56,28 @@ PRODUCTS = [
 ]
 
 # =================================================================
-# 💾 ระบบฐานข้อมูล (ปรับปรุงให้เหนียวแน่น ไม่หายง่ายๆ)
+# 💾 ระบบฐานข้อมูล
 # =================================================================
 DB_FILE = "user_balance.json"
 SLIP_DB_FILE = "used_slips.json"
 
 def load_db():
-    # ถ้าไม่มีไฟล์ ให้สร้างใหม่
     if not os.path.exists(DB_FILE):
         with open(DB_FILE, "w") as f: json.dump({}, f)
-        print("📂 สร้างไฟล์ Database ใหม่เรียบร้อย")
         return {}
-    
     try:
         with open(DB_FILE, "r") as f:
             data = json.load(f)
-            if not isinstance(data, dict): 
-                print("⚠️ Database เสียหาย! กำลังรีเซ็ต...")
-                return {}
-            print(f"📂 โหลดข้อมูลลูกค้าสำเร็จ: {len(data)} คน")
+            if not isinstance(data, dict): return {}
             return data
-    except Exception as e:
-        print(f"❌ Load DB Error: {e}")
+    except:
         return {}
 
 def save_db(data):
     try:
         with open(DB_FILE, "w") as f: json.dump(data, f, indent=4)
-    except Exception as e:
-        print(f"❌ Save DB Error: {e}")
+    except:
+        pass
 
 def get_balance(user_id):
     db = load_db()
@@ -92,25 +86,25 @@ def get_balance(user_id):
     return float(raw_val)
 
 def add_balance(user_id, amount):
-    db = load_db() # โหลดข้อมูลล่าสุดเสมอ
+    db = load_db()
     uid = str(user_id)
-    current = float(db.get(uid, 0.0))
-    
-    new_bal = current + float(amount)
-    db[uid] = new_bal
-    
-    save_db(db) # บันทึกทันที
-    return new_bal
+    current = get_balance(uid)
+    try:
+        new_bal = current + float(amount)
+        db[uid] = new_bal
+        save_db(db)
+        return new_bal
+    except:
+        return current
 
 def deduct_balance(user_id, amount):
-    db = load_db() # โหลดข้อมูลล่าสุดเสมอ
+    db = load_db()
     uid = str(user_id)
-    current = float(db.get(uid, 0.0))
+    current = get_balance(uid)
     cost = float(amount)
-    
     if current >= cost:
         db[uid] = current - cost
-        save_db(db) # บันทึกทันที
+        save_db(db)
         return True
     return False
 
@@ -197,7 +191,7 @@ def check_slip_easyslip(image_url):
         return False, 0, None, f"System Error: {str(e)}"
 
 # =================================================================
-# 🛒 View ยืนยันการสั่งซื้อ (จัดหน้าสวยๆ)
+# 🛒 View ยืนยันการสั่งซื้อ (Confirmation View)
 # =================================================================
 
 class ConfirmBuyView(discord.ui.View):
@@ -223,31 +217,23 @@ class ConfirmBuyView(discord.ui.View):
             if role:
                 try:
                     await interaction.user.add_roles(role)
-                    # 💎 สร้าง Order ID และวันที่
+                    # 💎 สร้าง Order ID
                     order_id = str(uuid.uuid4())[:8].upper()
                     now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
                     
-                    # 🔥 สร้าง Embed ใบเสร็จแบบตาราง (Code Block) ให้สวยงาม
+                    # 🔥 สร้าง Embed ใบเสร็จ
                     embed = discord.Embed(title="🔔 Order Successful", color=discord.Color.from_rgb(50, 255, 120))
                     
-                    # แถว 1: ผู้สั่ง | ระยะเวลา
                     embed.add_field(name="👤 ผู้สั่ง", value=f"{interaction.user.mention}", inline=True)
                     embed.add_field(name="🚀 ระยะเวลา", value="ถาวร", inline=True)
-                    
-                    # แถว 2: เซิร์ฟเวอร์
                     embed.add_field(name="🔗 เซิร์ฟเวอร์", value="[SHOP SERVER](https://discord.gg/your-link)", inline=False)
-                    
-                    # แถว 3: ชื่อสินค้า | จำนวน | ราคา
                     embed.add_field(name="👤 ชื่อสินค้า", value=f"```{self.product['name']}```", inline=True)
                     embed.add_field(name="💎 จำนวน", value="1 ชิ้น", inline=True)
                     embed.add_field(name="💰 ราคารวม", value=f"{price} บาท", inline=True)
-                    
-                    # แถว 4: สถานะ | Order ID | สถานะมอบ
                     embed.add_field(name="🟢 สถานะ", value="**สำเร็จ 100%**", inline=True)
                     embed.add_field(name="🧾 Order ID", value=f"`{order_id}`", inline=True)
                     embed.add_field(name="📦 มอบสินค้า", value="เรียบร้อยแล้ว", inline=True)
                     
-                    # รูป GIF ด้านล่าง
                     embed.set_image(url=SUCCESS_GIF_URL)
                     embed.set_footer(text=f"ขอบคุณที่ใช้บริการครับ • {now_str}", icon_url=interaction.user.display_avatar.url)
                     
@@ -300,12 +286,10 @@ class MainShopView(discord.ui.View):
     @discord.ui.button(label="เช็คยอดเงิน", style=discord.ButtonStyle.success, emoji="💰", row=0, custom_id="check_bal")
     async def check(self, interaction, button):
         bal = get_balance(interaction.user.id)
-        await interaction.response.send_message(f"💳 คงเหลือ: **{bal:.2f} บาท**", ephemeral=True)
+        await interaction.response.send_message(f"💳 ยอดเงินคงเหลือของคุณ: **{bal:.2f} บาท**", ephemeral=True)
 
-    # 🔥 ปุ่มล้างตัวเลือก: แก้ให้ Refresh Message แทนการส่งข้อความ
     @discord.ui.button(label="ล้างตัวเลือก", style=discord.ButtonStyle.danger, emoji="🗑️", row=0, custom_id="clear_select")
     async def clear(self, interaction, button):
-        # รีเฟรช View กลับเป็นค่าเริ่มต้น (Dropdown จะว่างเปล่า)
         await interaction.response.edit_message(view=MainShopView())
 
     @discord.ui.select(placeholder="🛒 เลือกสินค้า...", options=[discord.SelectOption(label=p['name'], value=p["id"], description=f"{p['price']} บาท", emoji=p["emoji"]) for p in PRODUCTS], custom_id="shop_select", row=1)
@@ -335,7 +319,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     print(f"✅ Bot Online: {bot.user}")
-    # โหลด DB เพื่อเช็คว่าไฟล์อยู่ดีไหม
     load_db()
     bot.add_view(MainShopView()) 
     try:
@@ -367,7 +350,6 @@ async def setup(interaction):
 
 @bot.tree.command(name="add_money", description="[Admin] เติมเงินให้ลูกค้า")
 @app_commands.default_permissions(administrator=True)
-@app_commands.describe(user="ลูกค้า", amount="จำนวนเงิน")
 async def add_money_command(interaction: discord.Interaction, user: discord.Member, amount: float):
     new_bal = add_balance(user.id, amount)
     embed = discord.Embed(title="💸 ปรับยอดเงินสำเร็จ", description=f"ลูกค้า: {user.mention}\nยอดใหม่: {new_bal:.2f} บาท", color=discord.Color.green())
@@ -375,13 +357,14 @@ async def add_money_command(interaction: discord.Interaction, user: discord.Memb
     if log := bot.get_channel(ADMIN_LOG_ID):
         await log.send(f"🔧 **[ADMIN]** {interaction.user.mention} ปรับเงิน {user.mention} {amount} บาท")
 
+# 🔥 [AUTO CLEANUP + LOGGING FIX]
 @bot.event
 async def on_message(message):
     if message.author.bot: return
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
         status_msg = await message.channel.send(f"⏳ กำลังตรวจสอบสลิป...")
         try:
-            # โหลดรูปมารอไว้ก่อน
+            # 1. โหลดรูปเก็บไว้ก่อน (สำคัญ! กันรูปลบแล้วหาไม่เจอ)
             img_data = requests.get(message.attachments[0].url).content
             
             success, amount, trans_ref, result_msg = check_slip_easyslip(message.attachments[0].url)
@@ -392,24 +375,31 @@ async def on_message(message):
                 new_bal = add_balance(message.author.id, amount)
                 save_used_slip(trans_ref) 
 
-                # 1. แจ้งลูกค้าชั่วคราว
                 success_embed = discord.Embed(title="✅ เติมเงินสำเร็จ!", color=discord.Color.green())
-                success_embed.description = f"ยอดเงินเข้า: **{amount} บาท**\nคงเหลือ: **{new_bal} บาท**\n*(ข้อความนี้จะลบใน 5 วินาที)*"
+                success_embed.description = f"**จำนวน:** `{amount}` บาท\n**คงเหลือ:** `{new_bal}` บาท\n*(ข้อความนี้จะลบใน 10 วินาที)*"
                 await status_msg.edit(content=message.author.mention, embed=success_embed)
 
-                # 2. บันทึกประวัติลงห้อง History
-                if hist_chan := bot.get_channel(HISTORY_CHANNEL_ID):
-                    log_embed = discord.Embed(title="🧾 บันทึกการเติมเงิน (Log)", color=discord.Color.blue(), timestamp=datetime.utcnow())
-                    log_embed.add_field(name="ลูกค้า", value=f"{message.author.mention} (`{message.author.name}`)", inline=True)
-                    log_embed.add_field(name="ยอดเติม", value=f"{amount} บาท", inline=True)
-                    log_embed.add_field(name="คงเหลือรวม", value=f"{new_bal} บาท", inline=True)
-                    log_embed.add_field(name="Ref", value=trans_ref, inline=False)
-                    slip_file = discord.File(io.BytesIO(img_data), filename=f"slip_{trans_ref}.jpg")
-                    log_embed.set_image(url=f"attachment://slip_{trans_ref}.jpg")
-                    await hist_chan.send(embed=log_embed, file=slip_file)
+                # 2. พยายามบันทึก Log (ใช้ try-except กันไม่ให้กระทบการลบข้อความ)
+                try:
+                    if hist_chan := bot.get_channel(HISTORY_CHANNEL_ID):
+                        log_embed = discord.Embed(title="🧾 บันทึกการเติมเงิน (Log)", color=discord.Color.blue(), timestamp=datetime.utcnow())
+                        log_embed.add_field(name="ลูกค้า", value=f"{message.author.mention}", inline=True)
+                        log_embed.add_field(name="ยอดเติม", value=f"{amount} บาท", inline=True)
+                        log_embed.add_field(name="คงเหลือรวม", value=f"{new_bal} บาท", inline=True)
+                        log_embed.add_field(name="Ref", value=trans_ref, inline=False)
+                        
+                        # สร้างไฟล์รูปจากข้อมูลที่โหลดมา
+                        slip_file = discord.File(io.BytesIO(img_data), filename=f"slip_{trans_ref}.jpg")
+                        log_embed.set_image(url=f"attachment://slip_{trans_ref}.jpg")
+                        
+                        await hist_chan.send(embed=log_embed, file=slip_file)
+                    else:
+                        print("❌ หาห้องประวัติไม่เจอ (Check ID)")
+                except Exception as e:
+                    print(f"❌ Log Error: {e}")
 
-                # 3. ลบหลักฐาน (Cleanup)
-                await asyncio.sleep(5)
+                # 3. ลบข้อความ (ทำงานแน่นอน แม้ Log จะพัง)
+                await asyncio.sleep(10)
                 try:
                     await message.delete()
                     await status_msg.delete()
