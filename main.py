@@ -38,7 +38,7 @@ SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/144
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF_-_Fire_Force_Sho_Kusakabe_-_Descobrir_e_Compartilhar_GIFs.gif?ex=692d5f76&is=692c0df6&hm=a3344a6e695ceb3a513281745b49616df9e99da3e7960635fa2b94b3b8770ce4&'
 
 # 🔥 [SMART CHECK]
-EXPECTED_NAMES = ['ชานนท์ ขันทอง', 'Chanon Khantong', 'chanon khantong'] 
+EXPECTED_NAMES = ['ชานนท์ ขันทอง', 'Chanon Khantong', 'chanon khantong', 'chanon k', 'ชานนท์ ข', 'นายชานนท์ ขันทอง', 'นาย ชานนท์ ขันทอง', 'นายชานนท์ ข', 'นาย ชานนท์ ข'] 
 MIN_AMOUNT = 1.00 
 
 PRODUCTS = [
@@ -413,3 +413,4 @@ async def on_message(message):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
+
