@@ -59,12 +59,12 @@ PRODUCTS = [
 ]
 
 # =================================================================
-# 💾 DATABASE SYSTEM
+# 💾 ระบบฐานข้อมูล (เพิ่ม Total & Log)
 # =================================================================
 DB_FILE = "user_balance.json"
 SLIP_DB_FILE = "used_slips.json"
-TOTAL_DB_FILE = "total_topup.json"
-LOG_MSG_DB = "log_messages.json"
+TOTAL_DB_FILE = "total_topup.json"     # เก็บยอดเติมรวมทั้งหมด
+LOG_MSG_DB = "log_messages.json"       # เก็บ ID ข้อความ Log ของแต่ละคน
 
 def load_json(filename):
     if not os.path.exists(filename):
@@ -171,8 +171,9 @@ def check_slip_easyslip(image_url):
             try:
                 dt_str = f"{slip['date']} {slip['time']}".replace("T", " ").split("+")[0].split(".")[0]
                 
-                slip_dt = None
+                # ลองแปลงหลายรูปแบบ
                 formats = ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d"]
+                slip_dt = None
                 for fmt in formats:
                     try:
                         slip_dt = datetime.strptime(dt_str, fmt)
@@ -262,7 +263,7 @@ class ConfirmBuyView(discord.ui.View):
         self.product = product
         self.user_id = user_id
 
-    @discord.ui.button(label="✅ ยืนยัน", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="✅ ยืนยันการชำระเงิน", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id: return
         
@@ -282,21 +283,21 @@ class ConfirmBuyView(discord.ui.View):
         order_id = str(uuid.uuid4())[:8].upper()
         now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        embed = discord.Embed(title="✅ Order Successful", color=discord.Color.green())
-        receipt_text = (
-            f"👤 ผู้สั่ง   : {interaction.user.display_name}\n"
-            f"📦 สินค้า    : {self.product['name']}\n"
-            f"💎 ราคา     : {price} บาท\n"
-            f"🧾 Order ID : {order_id}\n"
-            f"🗓️ วันที่     : {now_str}"
-        )
-        embed.description = f"```yaml\n{receipt_text}\n```"
+        # 🔥 ใบเสร็จแนวตั้ง (แบบรูปแรกที่คุณส่งมา)
+        embed = discord.Embed(title="🔔 Order Successful", color=discord.Color.from_rgb(50, 255, 120))
         
-        embed.add_field(name="💰 ยอดเงินคงเหลือ", value=f"`{data['balance'] - price} บาท`", inline=True)
-        embed.add_field(name="📦 สถานะสินค้า", value="`✅ ส่งมอบแล้ว`", inline=True)
+        embed.add_field(name="👤 ผู้สั่ง", value=f"{interaction.user.mention}", inline=False)
+        embed.add_field(name="🚀 ระยะเวลา", value="ถาวร", inline=False)
+        embed.add_field(name="🔗 เซิร์ฟเวอร์", value="[SHOP SERVER](https://discord.gg/your-link)", inline=False)
+        embed.add_field(name="👤 ชื่อสินค้า", value=f"```\n{self.product['name']}\n```", inline=False)
+        embed.add_field(name="💎 จำนวน", value="1 ชิ้น", inline=False)
+        embed.add_field(name="💰 ราคารวม", value=f"{price} บาท", inline=False)
+        embed.add_field(name="🟢 สถานะ", value="สำเร็จ 100%", inline=False)
+        embed.add_field(name="🧾 Order ID", value=f"`{order_id}`", inline=False)
+        embed.add_field(name="📦 มอบสินค้า", value="เรียบร้อยแล้ว", inline=False)
         
         embed.set_image(url=SUCCESS_GIF_URL)
-        embed.set_footer(text=f"ขอบคุณที่ใช้บริการครับ", icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text=f"ขอบคุณที่ใช้บริการครับ • {now_str}", icon_url=interaction.user.display_avatar.url)
         
         await interaction.response.edit_message(content=None, embed=embed, view=None)
         
@@ -305,10 +306,10 @@ class ConfirmBuyView(discord.ui.View):
 
     @discord.ui.button(label="❌ ยกเลิก", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id == self.user_id:
-            await interaction.response.edit_message(content="🗑️ ยกเลิกรายการเรียบร้อย", view=None, embed=None)
+        if interaction.user.id != self.user_id: return
+        await interaction.response.edit_message(content="🗑️ ยกเลิกรายการเรียบร้อย", view=None, embed=None)
 
-class TopupModal(discord.ui.Modal, title="เติมเงิน (Top Up)"):
+class TopupModal(discord.ui.Modal, title="เติมเงินเข้าระบบ (Top Up)"):
     amount = discord.ui.TextInput(label="จำนวนเงิน", placeholder="50", min_length=1, max_length=6)
     async def on_submit(self, interaction: discord.Interaction):
         try: val = float(self.amount.value)
@@ -327,14 +328,14 @@ class MainShopView(discord.ui.View):
     @discord.ui.button(label="เช็คยอด", style=discord.ButtonStyle.success, emoji="💰", custom_id="check")
     async def check(self, interaction, button):
         bal = get_data(interaction.user.id)['balance']
-        # 🔥 แก้ไข: ใช้ Embed สีเขียวเล็กๆ ตาม UI เดิม
+        # 🔥 Embed เช็คยอดสีเขียวเล็กๆ (แบบรูปที่ 3)
         embed = discord.Embed(description=f"🦋 **คุณมียอดเงินคงเหลือ {bal:.2f} บาท**", color=discord.Color.green())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @discord.ui.button(label="ล้างค่า", style=discord.ButtonStyle.danger, emoji="🗑️", custom_id="clear")
     async def clear(self, interaction, button): await interaction.response.edit_message(view=MainShopView())
 
-    @discord.ui.select(placeholder="เลือกสินค้า...", options=[discord.SelectOption(label=p['name'], value=p['id'], description=f"{p['price']} บาท", emoji=p["emoji"]) for p in PRODUCTS], custom_id="shop_select")
+    @discord.ui.select(placeholder="🛒 เลือกสินค้า...", options=[discord.SelectOption(label=p['name'], value=p['id'], description=f"{p['price']} บาท", emoji=p["emoji"]) for p in PRODUCTS], custom_id="shop_select")
     async def buy(self, interaction, select):
         prod = next(p for p in PRODUCTS if p['id'] == select.values[0])
         bal = get_data(interaction.user.id)['balance']
@@ -372,7 +373,6 @@ async def setup_dashboard(interaction):
 @bot.tree.command(name="setup_shop")
 async def setup_shop(interaction):
     await interaction.response.defer(ephemeral=True)
-    # 👇 ใส่ข้อความเต็มๆ ตาม UI เดิม 👇
     description_text = (
         "ยินดีต้อนรับสู่ **💻 NEW PROJECT!** ระบบอัตโนมัติ 24 ชม.\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -388,17 +388,15 @@ async def setup_shop(interaction):
     )
     embed_shop = discord.Embed(title="✨ 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 𝐒𝐇𝐎𝐏 ✨", description=description_text, color=discord.Color.from_rgb(47, 49, 54))
     if SHOP_GIF_URL.startswith("http"): embed_shop.set_image(url=SHOP_GIF_URL)
-    
     await interaction.channel.send(embed=embed_shop, view=MainShopView())
     await interaction.followup.send("✅ Done!")
 
-# 🔥 [FIXED] คำสั่งแอดมิน UI เดิม (Embed สีเขียว)
 @bot.tree.command(name="add_money")
 async def add_money(interaction, user: discord.Member, amount: float):
     new_bal = update_money(user.id, amount, is_topup=True)
     await update_user_log(interaction.client, user.id)
     
-    # ✅ UI เดิมที่เคยส่งให้
+    # ✅ UI แอดมินเติมเงิน (แบบรูปที่ 2)
     embed = discord.Embed(description=f"💸 **ปรับยอดเงินสำเร็จ**", color=discord.Color.green())
     embed.add_field(name="ลูกค้า", value=user.mention, inline=True)
     embed.add_field(name="ยอดใหม่", value=f"{new_bal:.2f} บาท", inline=True)
@@ -408,7 +406,6 @@ async def add_money(interaction, user: discord.Member, amount: float):
     if log := bot.get_channel(ADMIN_LOG_ID):
         await log.send(f"🔧 **[ADMIN]** {interaction.user.mention} ปรับเงิน {user.mention} {amount} บาท")
 
-# 🔥 [FIXED] Log เดิม (แนวตั้ง)
 @bot.event
 async def on_message(message):
     if message.author.bot: return
@@ -429,7 +426,7 @@ async def on_message(message):
 
                 await msg.edit(content=f"✅ เติมเงินสำเร็จ {amount} บาท\nคงเหลือ {new_bal} บาท")
                 
-                # ✅ Log แบบเดิม (แนวตั้ง + รูป)
+                # ✅ Log สลิป (แนวตั้ง + รูป)
                 if hist := bot.get_channel(HISTORY_CHANNEL_ID):
                     log_embed = discord.Embed(title="🧾 บันทึกการเติมเงิน (Log)", color=discord.Color.blue())
                     log_embed.description = (
