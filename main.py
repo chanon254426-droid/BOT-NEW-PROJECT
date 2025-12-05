@@ -28,7 +28,7 @@ SLIP_CHANNEL_ID = 1416797464350167090
 ADMIN_LOG_ID = 1441466742885978144     
 HISTORY_CHANNEL_ID = 1444390933297631512 
 
-# 🔥 [NEW] ห้องสำหรับระบบ Dashboard
+# ห้อง Dashboard
 DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423 
 DASHBOARD_LOG_CHANNEL_ID = 1444662604940181667 
 
@@ -37,8 +37,18 @@ QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF_-_Fire_Force_Sho_Kusakabe_-_Descobrir_e_Compartilhar_GIFs.gif?ex=692d5f76&is=692c0df6&hm=a3344a6e695ceb3a513281745b49616df9e99da3e7960635fa2b94b3b8770ce4&'
 
-# 🔥 [SMART CHECK] รายชื่อผู้รับที่ถูกต้อง
-EXPECTED_NAMES = ['ชานนท์ ขันทอง', 'Chanon Khantong', 'chanon khantong', 'chanon k', 'ชานนท์ ข', 'นายชานนท์ ขันทอง', 'นาย ชานนท์ ขันทอง', 'นายชานนท์ ข', 'นาย ชานนท์ ข']
+# 🔥 [SMART CHECK] อัปเดตรายชื่อตามที่คุณขอ (ครอบคลุมทุกแบบ)
+EXPECTED_NAMES = [
+    'ชานนท์ ขันทอง', 
+    'Chanon Khantong', 
+    'chanon khantong', 
+    'chanon k', 
+    'ชานนท์ ข', 
+    'นายชานนท์ ขันทอง', 
+    'นาย ชานนท์ ขันทอง', 
+    'นายชานนท์ ข', 
+    'นาย ชานนท์ ข'
+]
 MIN_AMOUNT = 1.00 
 
 PRODUCTS = [
@@ -59,12 +69,12 @@ PRODUCTS = [
 ]
 
 # =================================================================
-# 💾 ระบบฐานข้อมูล (เพิ่ม Total & Log)
+# 💾 ระบบฐานข้อมูล
 # =================================================================
 DB_FILE = "user_balance.json"
 SLIP_DB_FILE = "used_slips.json"
-TOTAL_DB_FILE = "total_topup.json"     # เก็บยอดเติมรวมทั้งหมด
-LOG_MSG_DB = "log_messages.json"       # เก็บ ID ข้อความ Log ของแต่ละคน
+TOTAL_DB_FILE = "total_topup.json"
+LOG_MSG_DB = "log_messages.json"
 
 def load_json(filename):
     if not os.path.exists(filename):
@@ -146,34 +156,35 @@ def check_slip_easyslip(image_url):
             if amount < MIN_AMOUNT:
                 return False, 0, None, f"❌ ยอดต่ำกว่ากำหนด ({amount} < {MIN_AMOUNT})"
 
-            # 2. เช็คชื่อผู้รับ (Strict Name Check)
-            receiver = slip.get('receiver', {}).get('displayName') or slip.get('receiver', {}).get('name') or ""
-            receiver = receiver.strip()
+            # 2. เช็คชื่อผู้รับ (ตาม List ที่คุณให้มา)
+            receiver_info = slip.get('receiver', {})
+            receiver_name = receiver_info.get('displayName', '') or receiver_info.get('name', '')
+            receiver_name = receiver_name.strip()
             
-            if not receiver:
-                 # 🔥 ถ้า API ไม่ส่งชื่อมา หรืออ่านชื่อไม่ออก -> ปัดตกทันที
+            if not receiver_name:
+                 # 🔥 ถ้า API ไม่ส่งชื่อมา -> ปัดตกทันที (ตามเงื่อนไข Strict)
                  return False, 0, None, "❌ ไม่พบชื่อผู้รับในสลิป (API ไม่ส่งมา)"
 
-            # ล้างชื่อให้สะอาดเพื่อเปรียบเทียบ
-            clean_receiver = " ".join(receiver.lower().split())
+            # ล้างชื่อให้สะอาดเพื่อเปรียบเทียบ (ตัดเว้นวรรคซ้ำ, ตัวพิมพ์เล็ก)
+            clean_receiver = " ".join(receiver_name.lower().split())
             
             is_name_valid = False
             for valid_name in EXPECTED_NAMES:
                 clean_valid = " ".join(valid_name.lower().split())
+                # ใช้ in เพื่อเช็คว่ามีส่วนหนึ่งส่วนใดตรงกันหรือไม่ (ครอบคลุมการย่อชื่อ)
                 if clean_valid in clean_receiver: 
                     is_name_valid = True
                     break
             
             if not is_name_valid:
-                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนให้: {receiver})"
+                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนให้: {receiver_name})"
 
             # 3. เช็คเวลา (Strict Time: 5 Minutes)
             try:
                 dt_str = f"{slip['date']} {slip['time']}".replace("T", " ").split("+")[0].split(".")[0]
                 
-                # ลองแปลงหลายรูปแบบ
-                formats = ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d"]
                 slip_dt = None
+                formats = ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d"]
                 for fmt in formats:
                     try:
                         slip_dt = datetime.strptime(dt_str, fmt)
@@ -182,6 +193,7 @@ def check_slip_easyslip(image_url):
                 
                 if slip_dt:
                     if slip_dt.year > 2500: slip_dt = slip_dt.replace(year=slip_dt.year - 543)
+                    
                     now = datetime.utcnow() + timedelta(hours=7)
                     diff = (now - slip_dt).total_seconds() / 60
                     
@@ -206,7 +218,7 @@ class DashboardView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="🔄 อัปเดตยอดเงิน (Sync)", style=discord.ButtonStyle.primary, custom_id="update_db_btn")
+    @discord.ui.button(label="🔄 อัปเดตยอดเงิน", style=discord.ButtonStyle.primary, custom_id="update_db_btn")
     async def update_db(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.user.guild_permissions.administrator:
             return await interaction.response.send_message("❌ เฉพาะแอดมินเท่านั้น", ephemeral=True)
@@ -263,7 +275,7 @@ class ConfirmBuyView(discord.ui.View):
         self.product = product
         self.user_id = user_id
 
-    @discord.ui.button(label="✅ ยืนยันการชำระเงิน", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="✅ ยืนยัน", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id: return
         
@@ -283,7 +295,7 @@ class ConfirmBuyView(discord.ui.View):
         order_id = str(uuid.uuid4())[:8].upper()
         now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        # 🔥 ใบเสร็จแนวตั้ง (แบบรูปแรกที่คุณส่งมา)
+        # 🔥 ใบเสร็จแนวตั้ง (แบบรูปแรก)
         embed = discord.Embed(title="🔔 Order Successful", color=discord.Color.from_rgb(50, 255, 120))
         
         embed.add_field(name="👤 ผู้สั่ง", value=f"{interaction.user.mention}", inline=False)
@@ -306,8 +318,8 @@ class ConfirmBuyView(discord.ui.View):
 
     @discord.ui.button(label="❌ ยกเลิก", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.user_id: return
-        await interaction.response.edit_message(content="🗑️ ยกเลิกรายการเรียบร้อย", view=None, embed=None)
+        if interaction.user.id == self.user_id:
+            await interaction.response.edit_message(content="🗑️ ยกเลิกรายการเรียบร้อย", view=None, embed=None)
 
 class TopupModal(discord.ui.Modal, title="เติมเงินเข้าระบบ (Top Up)"):
     amount = discord.ui.TextInput(label="จำนวนเงิน", placeholder="50", min_length=1, max_length=6)
@@ -328,7 +340,6 @@ class MainShopView(discord.ui.View):
     @discord.ui.button(label="เช็คยอด", style=discord.ButtonStyle.success, emoji="💰", custom_id="check")
     async def check(self, interaction, button):
         bal = get_data(interaction.user.id)['balance']
-        # 🔥 Embed เช็คยอดสีเขียวเล็กๆ (แบบรูปที่ 3)
         embed = discord.Embed(description=f"🦋 **คุณมียอดเงินคงเหลือ {bal:.2f} บาท**", color=discord.Color.green())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -391,12 +402,12 @@ async def setup_shop(interaction):
     await interaction.channel.send(embed=embed_shop, view=MainShopView())
     await interaction.followup.send("✅ Done!")
 
+# 🔥 [FIXED] คำสั่งแอดมิน UI เดิม
 @bot.tree.command(name="add_money")
 async def add_money(interaction, user: discord.Member, amount: float):
     new_bal = update_money(user.id, amount, is_topup=True)
     await update_user_log(interaction.client, user.id)
     
-    # ✅ UI แอดมินเติมเงิน (แบบรูปที่ 2)
     embed = discord.Embed(description=f"💸 **ปรับยอดเงินสำเร็จ**", color=discord.Color.green())
     embed.add_field(name="ลูกค้า", value=user.mention, inline=True)
     embed.add_field(name="ยอดใหม่", value=f"{new_bal:.2f} บาท", inline=True)
@@ -406,6 +417,7 @@ async def add_money(interaction, user: discord.Member, amount: float):
     if log := bot.get_channel(ADMIN_LOG_ID):
         await log.send(f"🔧 **[ADMIN]** {interaction.user.mention} ปรับเงิน {user.mention} {amount} บาท")
 
+# 🔥 [FIXED] Log เดิม (แนวตั้ง)
 @bot.event
 async def on_message(message):
     if message.author.bot: return
@@ -426,7 +438,6 @@ async def on_message(message):
 
                 await msg.edit(content=f"✅ เติมเงินสำเร็จ {amount} บาท\nคงเหลือ {new_bal} บาท")
                 
-                # ✅ Log สลิป (แนวตั้ง + รูป)
                 if hist := bot.get_channel(HISTORY_CHANNEL_ID):
                     log_embed = discord.Embed(title="🧾 บันทึกการเติมเงิน (Log)", color=discord.Color.blue())
                     log_embed.description = (
