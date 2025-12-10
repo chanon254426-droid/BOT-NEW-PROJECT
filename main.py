@@ -20,7 +20,7 @@ from myserver import server_on
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 
 # API Key EasySlip
-EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
+EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
 
 # Channel IDs
 SHOP_CHANNEL_ID = 1416797606180552714     
@@ -504,5 +504,6 @@ async def on_message(message):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
+
 
 
