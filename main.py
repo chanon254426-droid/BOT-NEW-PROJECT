@@ -19,7 +19,7 @@ from myserver import server_on
 # ⚠️ Token บอท
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 
-# API Key EasySlip (กลับมาใช้ EasySlip)
+# API Key EasySlip
 EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
 
 # Channel IDs
@@ -37,14 +37,11 @@ QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif'
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif'
 
-# 🔥 [STRICT CHECK] รายชื่อผู้รับ (ต้องตรงเป๊ะๆ หรือมีคำเหล่านี้)
+# 🔥 [SMART CHECK] รายชื่อผู้รับ (ต้องตรงตามนี้เท่านั้น)
 EXPECTED_NAMES = [
-    # --- ภาษาไทย ---
     'ชานนท์ ขันทอง',      'นายชานนท์ ขันทอง',    'นาย ชานนท์ ขันทอง',
     'ชานนท์ ข',          'นายชานนท์ ข',        'นาย ชานนท์ ข',
     'ชานนท์ ขัน',        'นายชานนท์ ขัน',
-    
-    # --- ภาษาอังกฤษ ---
     'chanon khantong',   'mr. chanon khantong', 'mr chanon khantong',
     'chanon k',          'mr. chanon k',        'mr chanon k',
     'chanon kh',         'chanon khan'
@@ -72,20 +69,19 @@ PRODUCTS = [
     {"id": "item18", "emoji": "🚧",  "name": "TOGYO MOD",        "price": 59,  "role_id": 1448142708286947449},
     {"id": "item19", "emoji": "⚡",  "name": "X Togyo mod",        "price": 35,  "role_id": 1448217708146589747},
     {"id": "item20", "emoji": "❓",  "name": "Tonedark❓",        "price": 35,  "role_id": 1448197995701993543},
+    {"id": "item21", "emoji": "🚣",  "name": "realistic𝚅7",        "price": 35,  "role_id": 1448313586915999755},
+    {"id": "item22", "emoji": "🍰",  "name": "PEKKY",        "price": 35,  "role_id": 1448263468355424298},
 ]
 
 # =================================================================
 # 💾 DATABASE SYSTEM
 # =================================================================
-DB_FILES = {
-    "balance": "user_balance.json",
-    "slips": "used_slips.json",
-    "total": "total_topup.json",
-    "logs": "log_messages.json"
-}
+DB_FILE = "user_balance.json"
+SLIP_DB_FILE = "used_slips.json"
+TOTAL_DB_FILE = "total_topup.json"
+LOG_MSG_DB = "log_messages.json"
 
-def load_json(key):
-    filename = DB_FILES.get(key)
+def load_json(filename):
     if not os.path.exists(filename):
         with open(filename, "w") as f: json.dump({}, f)
         return {}
@@ -93,12 +89,12 @@ def load_json(key):
         with open(filename, "r") as f: return json.load(f)
     except: return {}
 
-def save_json(key, data):
-    with open(DB_FILES.get(key), "w") as f: json.dump(data, f, indent=4)
+def save_json(filename, data):
+    with open(filename, "w") as f: json.dump(data, f, indent=4)
 
 def get_data(user_id):
-    bal_db = load_json("balance")
-    total_db = load_json("total")
+    bal_db = load_json(DB_FILE)
+    total_db = load_json(TOTAL_DB_FILE)
     uid = str(user_id)
     return {
         "balance": float(bal_db.get(uid, 0.0)),
@@ -106,8 +102,8 @@ def get_data(user_id):
     }
 
 def update_money(user_id, amount, is_topup=False):
-    bal_db = load_json("balance")
-    total_db = load_json("total")
+    bal_db = load_json(DB_FILE)
+    total_db = load_json(TOTAL_DB_FILE)
     uid = str(user_id)
     
     current_bal = float(bal_db.get(uid, 0.0))
@@ -117,13 +113,13 @@ def update_money(user_id, amount, is_topup=False):
     if is_topup and amount > 0:
         current_total = float(total_db.get(uid, 0.0))
         total_db[uid] = current_total + float(amount)
-        save_json("total", total_db)
+        save_json(TOTAL_DB_FILE, total_db)
         
-    save_json("balance", bal_db)
+    save_json(DB_FILE, bal_db)
     return new_bal
 
 def deduct_balance(user_id, amount):
-    db = load_json("balance")
+    db = load_json(DB_FILE)
     uid = str(user_id)
     current = float(db.get(uid, 0.0))
     cost = float(amount)
@@ -134,12 +130,12 @@ def deduct_balance(user_id, amount):
     return False
 
 def is_slip_used(trans_ref):
-    slips = load_json("slips")
+    slips = load_json(SLIP_DB_FILE)
     if isinstance(slips, dict): slips = list(slips.keys())
     return trans_ref in slips
 
 def save_used_slip(trans_ref):
-    slips = load_json("slips")
+    slips = load_json(SLIP_DB_FILE)
     if isinstance(slips, dict): slips = list(slips.keys())
     slips.append(trans_ref)
     with open(SLIP_DB_FILE, "w") as f: json.dump(slips, f, indent=4)
@@ -148,13 +144,11 @@ def save_used_slip(trans_ref):
 async def restore_database_from_logs(bot):
     print("🔄 กำลังกู้คืนข้อมูลจากห้อง Dashboard Log...")
     channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID)
-    if not channel:
-        print("❌ ไม่พบห้อง Dashboard Log")
-        return
+    if not channel: return
 
-    balances = load_json("balance")
-    totals = load_json("total")
-    msg_ids = load_json("logs")
+    balances = load_json(DB_FILE)
+    totals = load_json(TOTAL_DB_FILE)
+    msg_ids = load_json(LOG_MSG_DB)
     
     count = 0
     async for message in channel.history(limit=None):
@@ -185,18 +179,17 @@ async def restore_database_from_logs(bot):
         msg_ids[user_id] = message.id
         count += 1
 
-    save_json("balance", balances)
-    save_json("total", totals)
-    save_json("logs", msg_ids)
+    save_json(DB_FILE, balances)
+    save_json(TOTAL_DB_FILE, totals)
+    save_json(LOG_MSG_DB, msg_ids)
     print(f"✅ กู้คืนข้อมูลลูกค้าสำเร็จ {count} รายการ")
 
-# 🔥 [STRICT MODE] ระบบเช็คสลิป EasySlip (เข้มงวดที่สุด)
+# 🔥 ระบบเช็คสลิป (EasySlip - Strict Mode)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
         img_data = requests.get(image_url).content
         files = {'file': ('slip.jpg', io.BytesIO(img_data), 'image/jpeg')}
-        
         response = requests.post(
             "https://developer.easyslip.com/api/v1/verify",
             headers={'Authorization': f'Bearer {EASYSLIP_API_KEY}'},
@@ -207,21 +200,21 @@ def check_slip_easyslip(image_url):
         if response.status_code == 200 and data['status'] == 200:
             slip = data['data']
             
-            # 1. เช็คยอดเงิน
             raw_amount = slip['amount']
             if isinstance(raw_amount, dict): raw_amount = raw_amount.get('amount', 0)
             amount = float(raw_amount)
 
+            # 1. เช็คยอดเงิน
             if amount < MIN_AMOUNT:
                 return False, 0, None, f"❌ ยอดต่ำกว่ากำหนด ({amount} < {MIN_AMOUNT})"
 
-            # 2. เช็คชื่อผู้รับ (Strict: ต้องมีชื่อ และชื่อต้องตรง)
+            # 2. เช็คชื่อผู้รับ (Strict Check: ต้องมีชื่อ และต้องตรง)
             receiver = slip.get('receiver', {}).get('displayName') or slip.get('receiver', {}).get('name') or ""
             receiver = receiver.strip()
             
-            # ❌ ถ้าไม่มีชื่อ (เช่น Wallet) -> ปัดตกทันที!
+            # 🔥 ถ้าไม่มีชื่อ (เช่น Wallet) -> ปัดตกทันที!
             if not receiver:
-                 return False, 0, None, "❌ สลิปนี้ไม่ระบุชื่อผู้รับ (Wallet ใช้ไม่ได้)"
+                 return False, 0, None, "❌ สลีปไม่ถูกต้อง (Wallet ใช้ไม่ได้ )"
 
             clean_receiver = " ".join(receiver.lower().split())
             is_name_valid = False
@@ -231,9 +224,8 @@ def check_slip_easyslip(image_url):
                     is_name_valid = True
                     break
             
-            # ❌ ชื่อไม่ตรง -> ปัดตกทันที!
             if not is_name_valid:
-                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนไป: {receiver})"
+                 return False, 0, None, f"❌ สลีปไม่ถูกต้อง (โอนไป: {receiver})"
 
             # 3. เช็คเวลา (Strict: 5 นาที)
             try:
@@ -250,13 +242,13 @@ def check_slip_easyslip(image_url):
                 if slip_dt:
                     if slip_dt.year > 2500: slip_dt = slip_dt.replace(year=slip_dt.year - 543)
                     
-                    # เทียบกับเวลาปัจจุบัน (UTC+7)
+                    # เวลาปัจจุบัน (+7 UTC สำหรับไทย)
                     now = datetime.utcnow() + timedelta(hours=7)
                     diff = (now - slip_dt).total_seconds() / 60
                     
                     # ❌ เก่าเกิน 5 นาที -> ไม่ผ่าน
                     if diff > 5: 
-                        return False, 0, None, f"❌ สลิปเก่าเกิน 5 นาที ({int(diff)} นาที)"
+                        return False, 0, None, f"❌ สลิปเก่าเกิน 5 นาที ({int(diff)} นาทีที่แล้ว)"
                     # ❌ อนาคตเกิน 5 นาที -> ไม่ผ่าน
                     if diff < -5: 
                         return False, 0, None, "❌ เวลาสลิปผิดปกติ (อนาคต)"
@@ -264,7 +256,7 @@ def check_slip_easyslip(image_url):
                     return False, 0, None, "❌ อ่านเวลาสลิปไม่ได้"
                 
             except Exception as e:
-                print(f"Time Error: {e}")
+                print(f"Time Check Error: {e}")
                 return False, 0, None, "❌ เกิดข้อผิดพลาดในการตรวจสอบเวลา"
 
             return True, amount, slip['transRef'], "OK"
@@ -342,7 +334,6 @@ class ConfirmBuyView(discord.ui.View):
     @discord.ui.button(label="✅ ยืนยัน", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id: return
-        
         await interaction.response.defer()
 
         data = get_data(interaction.user.id)
@@ -351,12 +342,10 @@ class ConfirmBuyView(discord.ui.View):
         if data['balance'] < price:
             return await interaction.followup.send(content=f"❌ เงินไม่พอขาด `{price - data['balance']}`", ephemeral=True)
 
-        update_money(interaction.user.id, -price) 
-        
+        update_money(interaction.user.id, -price)
         role = interaction.guild.get_role(self.product["role_id"])
         if role: await interaction.user.add_roles(role)
-
-        await update_user_log(interaction.client, interaction.user.id) 
+        await update_user_log(interaction.client, interaction.user.id)
 
         order_id = str(uuid.uuid4())[:8].upper()
         now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -403,20 +392,22 @@ class MainShopView(discord.ui.View):
 
     @discord.ui.button(label="เช็คยอด", style=discord.ButtonStyle.success, emoji="💰", custom_id="check")
     async def check(self, interaction, button):
+        await interaction.response.defer(ephemeral=True)
         bal = get_data(interaction.user.id)['balance']
         embed = discord.Embed(description=f"🦋 **คุณมียอดเงินคงเหลือ {bal:.2f} บาท**", color=discord.Color.green())
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @discord.ui.button(label="ล้างค่า", style=discord.ButtonStyle.danger, emoji="🗑️", custom_id="clear")
     async def clear(self, interaction, button): await interaction.response.edit_message(view=MainShopView())
 
     @discord.ui.select(placeholder="เลือกสินค้า...", options=[discord.SelectOption(label=p['name'], value=p['id'], description=f"{p['price']} บาท", emoji=p["emoji"]) for p in PRODUCTS], custom_id="shop_select")
     async def buy(self, interaction, select):
+        await interaction.response.defer(ephemeral=True)
         prod = next(p for p in PRODUCTS if p['id'] == select.values[0])
         bal = get_data(interaction.user.id)['balance']
         embed = discord.Embed(title="🛒 ยืนยันการสั่งซื้อ", description=f"สินค้า: {prod['name']}\nราคา: {prod['price']} บาท", color=discord.Color.blue())
         if bal < prod['price']: embed.color = discord.Color.red(); embed.set_footer(text="❌ เงินไม่พอ")
-        await interaction.response.send_message(embed=embed, view=ConfirmBuyView(prod, interaction.user.id), ephemeral=True)
+        await interaction.followup.send(embed=embed, view=ConfirmBuyView(prod, interaction.user.id), ephemeral=True)
 
 # =================================================================
 # 🤖 MAIN BOT SETUP
@@ -429,7 +420,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     print(f"✅ Bot Online: {bot.user}")
-    load_db() # โหลด DB เข้า Memory
+    load_db()
     bot.add_view(MainShopView())
     bot.add_view(DashboardView())
     try: await bot.tree.sync()
@@ -486,8 +477,6 @@ async def on_message(message):
         msg = await message.channel.send("⏳ ตรวจสอบ...")
         try:
             img_data = requests.get(message.attachments[0].url).content
-            
-            # 🔥 ใช้ฟังก์ชัน EasySlip แบบเข้มงวด
             success, amount, ref, txt = check_slip_easyslip(message.attachments[0].url)
             
             if success:
@@ -499,7 +488,16 @@ async def on_message(message):
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
 
-                await msg.edit(content=f"✅ เติมเงินสำเร็จ {amount} บาท\nคงเหลือ {new_bal} บาท")
+                # 🔥🔥 แก้ไขตรงนี้: เพิ่ม Embed แสดงรายละเอียดสำเร็จ (เหมือนเดิม)
+                embed_success = discord.Embed(title="✅ เติมเงินสำเร็จ", color=discord.Color.green())
+                embed_success.description = (
+                    f"👤 **ลูกค้า:** {message.author.mention}\n"
+                    f"💰 **ยอดเงิน:** `{amount:.2f}` บาท\n"
+                    f"💵 **คงเหลือ:** `{new_bal:.2f}` บาท\n"
+                    f"🧾 **Ref:** `{ref}`"
+                )
+                embed_success.set_thumbnail(url=message.author.display_avatar.url)
+                await msg.edit(content=None, embed=embed_success)
                 
                 if hist := bot.get_channel(HISTORY_CHANNEL_ID):
                     log_embed = discord.Embed(title="🧾 บันทึกการเติมเงิน (Log)", color=discord.Color.blue())
