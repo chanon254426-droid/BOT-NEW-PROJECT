@@ -56,10 +56,10 @@ PRODUCTS = [
     {"id": "item12", "emoji": "🌷",  "name": "𝚁𝚎𝚊𝚕𝚕𝚒𝚟𝚎",        "price": 25,  "role_id": 1431204938373140513},
     {"id": "item13", "emoji": "🏞️",  "name": "ꜰᴀʟʟɪɴɢ",         "price": 25,  "role_id": 1444192569754910770},
     {"id": "item14", "emoji": "🎀",  "name": "realistic𝚅4",         "price": 35,  "role_id": 1448142438131699722},
-    {"id": "item14", "emoji": "🌌",  "name": "realistic𝚅5",         "price": 35,  "role_id": 1448171343022526574},
-    {"id": "item14", "emoji": "🍀",  "name": "realistic𝚅6",         "price": 35,  "role_id": 1448171385942966392},
-    {"id": "item15", "emoji": "🎮",  "name": "𝙱𝙾𝙾𝚂𝚃 𝙵𝙿𝚂",        "price": 99,  "role_id": 1432010188340199504},
-    {"id": "item16", "emoji": "🚧",  "name": "TOGYO MOD",        "price": 59,  "role_id": 1448142708286947449},
+    {"id": "item15", "emoji": "🌌",  "name": "realistic𝚅5",         "price": 35,  "role_id": 1448171343022526574},
+    {"id": "item16", "emoji": "🍀",  "name": "realistic𝚅6",         "price": 35,  "role_id": 1448171385942966392},
+    {"id": "item17", "emoji": "🎮",  "name": "𝙱𝙾𝙾𝚂𝚃 𝙵𝙿𝚂",        "price": 99,  "role_id": 1432010188340199504},
+    {"id": "item18", "emoji": "🚧",  "name": "TOGYO MOD",        "price": 59,  "role_id": 1448142708286947449},
 ]
 
 # =================================================================
@@ -503,4 +503,5 @@ async def on_message(message):
 server_on()
 # ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
+
 
