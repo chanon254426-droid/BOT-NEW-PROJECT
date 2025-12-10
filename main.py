@@ -19,27 +19,27 @@ from myserver import server_on
 # ⚠️ Token บอท
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 
-# ⚠️ SLIPOK API KEY (เปลี่ยนมาใช้ SlipOK ตามสั่ง)
-SLIPOK_API_KEY = 'SLIPOKA4R309R'
+# API Key EasySlip
+EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
 
 # Channel IDs
-SHOP_CHANNEL_ID = 1416797606180552714
-SLIP_CHANNEL_ID = 1416797464350167090
-ADMIN_LOG_ID = 1441466742885978144
-HISTORY_CHANNEL_ID = 1444390933297631512
+SHOP_CHANNEL_ID = 1416797606180552714     
+SLIP_CHANNEL_ID = 1416797464350167090     
+ADMIN_LOG_ID = 1441466742885978144        
+HISTORY_CHANNEL_ID = 1444390933297631512  
 
 # 🔥 ห้องสำหรับระบบ Dashboard
-DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423
-DASHBOARD_LOG_CHANNEL_ID = 1444662604940181667
+DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423 
+DASHBOARD_LOG_CHANNEL_ID = 1444662604940181667 
 
 # Images
-QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
+QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF_-_Fire_Force_Sho_Kusakabe_-_Descobrir_e_Compartilhar_GIFs.gif?ex=692d5f76&is=692c0df6&hm=a3344a6e695ceb3a513281745b49616df9e99da3e7960635fa2b94b3b8770ce4&'
 
 # 🔥 [SMART CHECK] รายชื่อผู้รับที่ถูกต้อง
 EXPECTED_NAMES = ['ชานนท์ ขันทอง', 'Chanon Khantong', 'chanon khantong', 'chanon k', 'ชานนท์ ข', 'นายชานนท์ ขันทอง', 'นาย ชานนท์ ขันทอง', 'นายชานนท์ ข', 'นาย ชานนท์ ข']
-MIN_AMOUNT = 1.00
+MIN_AMOUNT = 1.00 
 
 PRODUCTS = [
     {"id": "item1",  "emoji": "⭐",  "name": "𝙳𝙾𝙽𝙰𝚃𝙴",         "price": 89,  "role_id": 1431279741440364625},
@@ -131,7 +131,7 @@ def save_used_slip(trans_ref):
     slips.append(trans_ref)
     with open(SLIP_DB_FILE, "w") as f: json.dump(slips, f, indent=4)
 
-# 🔥 ระบบกู้คืนข้อมูลจาก Dashboard Log
+# 🔥 ระบบกู้คืนข้อมูลจาก Dashboard Log (ฟีเจอร์ใหม่!)
 async def restore_database_from_logs(bot):
     print("🔄 กำลังกู้คืนข้อมูลจากห้อง Dashboard Log...")
     channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID)
@@ -139,6 +139,7 @@ async def restore_database_from_logs(bot):
         print("❌ ไม่พบห้อง Dashboard Log")
         return
 
+    # โหลดข้อมูลปัจจุบันมาก่อน (กันทับข้อมูลใหม่กว่า)
     balances = load_json(DB_FILE)
     totals = load_json(TOTAL_DB_FILE)
     msg_ids = load_json(LOG_MSG_DB)
@@ -150,18 +151,23 @@ async def restore_database_from_logs(bot):
 
         embed = message.embeds[0]
         
+        # 1. ดึง ID ลูกค้าจาก Footer
         if not embed.footer or not embed.footer.text: continue
         id_match = re.search(r"ID: (\d+)", embed.footer.text)
         if not id_match: continue
         user_id = id_match.group(1)
 
+        # 2. ดึงยอดเงินคงเหลือ
         bal_field = next((f for f in embed.fields if "เงินคงเหลือ" in f.name), None)
         if bal_field:
+             # แกะตัวเลขจาก format `100.00 บาท`
              bal_match = re.search(r"([\d.]+)", bal_field.value)
              if bal_match:
+                 # ถ้าในไฟล์ไม่มี หรือเป็น 0 ให้เอาจาก Log มาใส่
                  if float(balances.get(user_id, 0)) == 0:
                      balances[user_id] = float(bal_match.group(1))
 
+        # 3. ดึงยอดเติมสะสม
         total_field = next((f for f in embed.fields if "ยอดเติมสะสม" in f.name), None)
         if total_field:
              total_match = re.search(r"([\d.]+)", total_field.value)
@@ -169,44 +175,46 @@ async def restore_database_from_logs(bot):
                  if float(totals.get(user_id, 0)) == 0:
                      totals[user_id] = float(total_match.group(1))
         
+        # 4. จำ Message ID ไว้แก้ไขต่อ
         msg_ids[user_id] = message.id
         count += 1
 
+    # บันทึกคืนลงไฟล์
     save_json(DB_FILE, balances)
     save_json(TOTAL_DB_FILE, totals)
     save_json(LOG_MSG_DB, msg_ids)
     print(f"✅ กู้คืนข้อมูลลูกค้าสำเร็จ {count} รายการ")
 
-# 🔥 [FIXED] ระบบเช็คสลิป SlipOK (เปลี่ยนใหม่)
-def check_slip_slipok(image_url):
-    print(f"Checking slip with SlipOK: {image_url}")
+# 🔥 ระบบเช็คสลิป (Strict & Smart)
+def check_slip_easyslip(image_url):
+    print(f"Checking slip: {image_url}")
     try:
         img_data = requests.get(image_url).content
-        files = {'files': ('slip.jpg', io.BytesIO(img_data), 'image/jpeg')}
-        
-        # ยิง API ไปที่ SlipOK
+        files = {'file': ('slip.jpg', io.BytesIO(img_data), 'image/jpeg')}
         response = requests.post(
-            "https://api.slipok.com/api/line/apikey/verification",
-            headers={'x-authorization': SLIPOK_API_KEY}, # ใช้ Key ที่กำหนด
+            "https://developer.easyslip.com/api/v1/verify",
+            headers={'Authorization': f'Bearer {EASYSLIP_API_KEY}'},
             files=files, timeout=15
         )
         data = response.json()
 
-        if response.status_code == 200 and data.get('success'):
+        if response.status_code == 200 and data['status'] == 200:
             slip = data['data']
-            amount = float(slip['amount'])
+            
+            raw_amount = slip['amount']
+            if isinstance(raw_amount, dict): raw_amount = raw_amount.get('amount', 0)
+            amount = float(raw_amount)
 
             if amount < MIN_AMOUNT:
                 return False, 0, None, f"❌ ยอดต่ำกว่ากำหนด ({amount} < {MIN_AMOUNT})"
 
-            receiver_info = slip.get('receiver', {})
-            receiver_name = receiver_info.get('displayName') or receiver_info.get('name') or ""
-            receiver_name = receiver_name.strip()
+            receiver = slip.get('receiver', {}).get('displayName') or slip.get('receiver', {}).get('name') or ""
+            receiver = receiver.strip()
             
-            if not receiver_name:
+            if not receiver:
                  return False, 0, None, "❌ ไม่พบชื่อผู้รับในสลิป (API ไม่ส่งมา)"
 
-            clean_receiver = " ".join(receiver_name.lower().split())
+            clean_receiver = " ".join(receiver.lower().split())
             is_name_valid = False
             for valid_name in EXPECTED_NAMES:
                 clean_valid = " ".join(valid_name.lower().split())
@@ -215,11 +223,33 @@ def check_slip_slipok(image_url):
                     break
             
             if not is_name_valid:
-                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนให้: {receiver_name})"
+                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนให้: {receiver})"
+
+            try:
+                dt_str = f"{slip['date']} {slip['time']}".replace("T", " ").split("+")[0].split(".")[0]
+                slip_dt = None
+                formats = ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d"]
+                for fmt in formats:
+                    try:
+                        slip_dt = datetime.strptime(dt_str, fmt)
+                        break
+                    except: continue
+                
+                if slip_dt:
+                    if slip_dt.year > 2500: slip_dt = slip_dt.replace(year=slip_dt.year - 543)
+                    now = datetime.utcnow() + timedelta(hours=7)
+                    diff = (now - slip_dt).total_seconds() / 60
+                    
+                    if diff > 5: return False, 0, None, f"❌ สลิปเก่าเกิน 5 นาที ({int(diff)} นาที)"
+                    if diff < -5: return False, 0, None, "❌ เวลาสลิปผิดปกติ (อนาคต)"
+                
+            except Exception as e:
+                print(f"Time Error: {e}")
+                pass 
 
             return True, amount, slip['transRef'], "OK"
         else:
-            return False, 0, None, data.get('message', 'สลิปไม่ถูกต้อง หรือเครดิตหมด')
+            return False, 0, None, data.get('message', 'สลิปไม่ผ่านการตรวจสอบ')
     except Exception as e:
         return False, 0, None, f"System Error: {str(e)}"
 
@@ -316,11 +346,11 @@ class ConfirmBuyView(discord.ui.View):
         
         embed = discord.Embed(title="✅ Order Successful", color=discord.Color.green())
         receipt_text = (
-            f"👤 ผู้สั่ง    : {interaction.user.display_name}\n"
-            f"📦 สินค้า     : {self.product['name']}\n"
-            f"💎 ราคา      : {price} บาท\n"
+            f"👤 ผู้สั่ง   : {interaction.user.display_name}\n"
+            f"📦 สินค้า    : {self.product['name']}\n"
+            f"💎 ราคา     : {price} บาท\n"
             f"🧾 Order ID : {order_id}\n"
-            f"🗓️ วันที่      : {now_str}"
+            f"🗓️ วันที่     : {now_str}"
         )
         embed.description = f"```yaml\n{receipt_text}\n```"
         embed.add_field(name="💰 ยอดเงินคงเหลือ", value=f"`{data['balance'] - price} บาท`", inline=True)
@@ -439,9 +469,7 @@ async def on_message(message):
         msg = await message.channel.send("⏳ ตรวจสอบ...")
         try:
             img_data = requests.get(message.attachments[0].url).content
-            
-            # 🔥 เปลี่ยนไปเรียกใช้ฟังก์ชัน SlipOK
-            success, amount, ref, txt = check_slip_slipok(message.attachments[0].url)
+            success, amount, ref, txt = check_slip_easyslip(message.attachments[0].url)
             
             if success:
                 if is_slip_used(ref):
@@ -475,5 +503,6 @@ async def on_message(message):
             await msg.edit(content=f"Error: {e}")
 
 server_on()
-# ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
+
+
