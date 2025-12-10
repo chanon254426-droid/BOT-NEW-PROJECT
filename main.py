@@ -25,7 +25,7 @@ except ImportError:
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 
 # ⚠️ SLIPOK API KEY (เปลี่ยนจาก EasySlip เป็น SlipOK)
-SLIPOK_API_KEY = 'https://api.slipok.com/api/line/apikey/57398' 
+SLIPOK_API_KEY = 'SLIPOKA4R309R' 
 
 # Channel IDs
 SHOP_CHANNEL_ID = 1416797606180552714      
@@ -414,3 +414,4 @@ async def on_message(message):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
+
