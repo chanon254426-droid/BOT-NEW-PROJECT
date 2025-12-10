@@ -19,7 +19,7 @@ from myserver import server_on
 # ⚠️ Token บอท
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 
-# ⚠️ API Key EasySlip
+# API Key EasySlip
 EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
 
 # Channel IDs
@@ -37,7 +37,7 @@ QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif'
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif'
 
-# 🔥 [STRICT CHECK] รายชื่อผู้รับ (ต้องมีคำเหล่านี้ในสลิปถึงจะผ่าน)
+# 🔥 [SMART CHECK] รายชื่อผู้รับ (ต้องมีคำเหล่านี้ในสลิป)
 EXPECTED_NAMES = [
     'ชานนท์ ขันทอง',      'นายชานนท์ ขันทอง',    'นาย ชานนท์ ขันทอง',
     'ชานนท์ ข',          'นายชานนท์ ข',        'นาย ชานนท์ ข',
@@ -144,9 +144,7 @@ def save_used_slip(trans_ref):
 async def restore_database_from_logs(bot):
     print("🔄 กำลังกู้คืนข้อมูลจากห้อง Dashboard Log...")
     channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID)
-    if not channel:
-        print("❌ ไม่พบห้อง Dashboard Log")
-        return
+    if not channel: return
 
     balances = load_json(DB_FILE)
     totals = load_json(TOTAL_DB_FILE)
@@ -167,16 +165,14 @@ async def restore_database_from_logs(bot):
         bal_field = next((f for f in embed.fields if "เงินคงเหลือ" in f.name), None)
         if bal_field:
              bal_match = re.search(r"([\d.]+)", bal_field.value)
-             if bal_match:
-                 if float(balances.get(user_id, 0)) == 0:
-                     balances[user_id] = float(bal_match.group(1))
+             if bal_match and float(balances.get(user_id, 0)) == 0:
+                 balances[user_id] = float(bal_match.group(1))
 
         total_field = next((f for f in embed.fields if "ยอดเติมสะสม" in f.name), None)
         if total_field:
              total_match = re.search(r"([\d.]+)", total_field.value)
-             if total_match:
-                 if float(totals.get(user_id, 0)) == 0:
-                     totals[user_id] = float(total_match.group(1))
+             if total_match and float(totals.get(user_id, 0)) == 0:
+                 totals[user_id] = float(total_match.group(1))
         
         msg_ids[user_id] = message.id
         count += 1
@@ -186,7 +182,7 @@ async def restore_database_from_logs(bot):
     save_json(LOG_MSG_DB, msg_ids)
     print(f"✅ กู้คืนข้อมูลลูกค้าสำเร็จ {count} รายการ")
 
-# 🔥 [STRICT MODE] ระบบเช็คสลิป EasySlip (แบบเข้มงวด + เช็คเวลา + เช็คชื่อ)
+# 🔥 [FIXED] ระบบเช็คสลิป EasySlip (แก้ปัญหาหาชื่อไม่เจอ + Strict Check)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
@@ -203,7 +199,7 @@ def check_slip_easyslip(image_url):
         if response.status_code == 200 and data['status'] == 200:
             slip = data['data']
             
-            # 1. ยอดเงิน
+            # 1. เช็คยอดเงิน
             raw_amount = slip['amount']
             if isinstance(raw_amount, dict): raw_amount = raw_amount.get('amount', 0)
             amount = float(raw_amount)
@@ -211,15 +207,28 @@ def check_slip_easyslip(image_url):
             if amount < MIN_AMOUNT:
                 return False, 0, None, f"❌ ยอดต่ำกว่ากำหนด ({amount} < {MIN_AMOUNT})"
 
-            # 2. เช็คชื่อผู้รับ (Strict Check: ต้องมีชื่อ และต้องตรง)
-            receiver = slip.get('receiver', {}).get('displayName') or slip.get('receiver', {}).get('name') or ""
-            receiver = receiver.strip()
+            # 2. เช็คชื่อผู้รับ (แบบเจาะลึกทุก Field)
+            receiver_data = slip.get('receiver', {})
             
-            # ❌ ถ้าไม่มีชื่อ (เช่น Wallet) -> ปัดตกทันที!
-            if not receiver:
-                 return False, 0, None, "❌ สลิปนี้ไม่ระบุชื่อผู้รับ (Wallet ไม่ได้ ต้องโอนผ่านธนาคารที่มีชื่อเท่านั้น)"
+            # พยายามดึงชื่อจากหลายๆ ที่ (เผื่อ API ส่งมาไม่เหมือนกัน)
+            receiver_name = receiver_data.get('displayName') or receiver_data.get('name')
+            if not receiver_name and 'account' in receiver_data:
+                acc = receiver_data['account']
+                if isinstance(acc, dict):
+                    # บางทีซ่อนอยู่ใน account -> name -> th
+                    receiver_name = acc.get('name')
+                    if isinstance(receiver_name, dict):
+                         receiver_name = receiver_name.get('th') or receiver_name.get('en')
+            
+            if not receiver_name: receiver_name = ""
+            receiver_name = receiver_name.strip()
+            
+            # ❌ ถ้าหาชื่อไม่เจอจริงๆ (เช่น Wallet) -> ปัดตก
+            if not receiver_name:
+                 return False, 0, None, "❌ สลิปนี้ไม่ระบุชื่อผู้รับ (Wallet ใช้ไม่ได้ ต้องโอนแบบมีชื่อเท่านั้น)"
 
-            clean_receiver = " ".join(receiver.lower().split())
+            # เช็คชื่อแบบตัดเว้นวรรค
+            clean_receiver = " ".join(receiver_name.lower().split())
             is_name_valid = False
             for valid_name in EXPECTED_NAMES:
                 clean_valid = " ".join(valid_name.lower().split())
@@ -227,9 +236,9 @@ def check_slip_easyslip(image_url):
                     is_name_valid = True
                     break
             
-            # ❌ ชื่อไม่ตรง -> ปัดตกทันที!
+            # ❌ ชื่อไม่ตรง -> ปัดตก
             if not is_name_valid:
-                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนไป: {receiver})"
+                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนไป: {receiver_name})"
 
             # 3. เช็คเวลา (Strict: 5 นาที)
             try:
@@ -250,14 +259,8 @@ def check_slip_easyslip(image_url):
                     now = datetime.utcnow() + timedelta(hours=7)
                     diff = (now - slip_dt).total_seconds() / 60
                     
-                    # ❌ เก่าเกิน 5 นาที -> ไม่ผ่าน
-                    if diff > 5: 
-                        return False, 0, None, f"❌ สลิปเก่าเกิน 5 นาที ({int(diff)} นาที)"
-                    # ❌ อนาคตเกิน 5 นาที -> ไม่ผ่าน
-                    if diff < -5: 
-                        return False, 0, None, "❌ เวลาสลิปผิดปกติ (อนาคต)"
-                else:
-                    return False, 0, None, "❌ อ่านเวลาสลิปไม่ได้"
+                    if diff > 5: return False, 0, None, f"❌ สลิปเก่าเกิน 5 นาที ({int(diff)} นาที)"
+                    if diff < -5: return False, 0, None, "❌ เวลาสลิปผิดปกติ (อนาคต)"
                 
             except Exception as e:
                 print(f"Time Check Error: {e}")
@@ -290,7 +293,6 @@ class DashboardView(discord.ui.View):
 async def update_user_log(bot, user_id):
     log_channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID)
     if not log_channel: return
-
     data = get_data(user_id)
     if data['total'] <= 0 and data['balance'] <= 0: return
 
@@ -312,9 +314,8 @@ async def update_user_log(bot, user_id):
             msg = await log_channel.fetch_message(msg_id)
             await msg.edit(embed=embed)
             return
-        except:
-            pass 
-
+        except: pass
+    
     msg = await log_channel.send(embed=embed)
     msg_db[str(user_id)] = msg.id
     save_json(LOG_MSG_DB, msg_db)
@@ -346,10 +347,12 @@ class ConfirmBuyView(discord.ui.View):
         if data['balance'] < price:
             return await interaction.followup.send(content=f"❌ เงินไม่พอขาด `{price - data['balance']}`", ephemeral=True)
 
-        update_money(interaction.user.id, -price)
+        update_money(interaction.user.id, -price) 
+        
         role = interaction.guild.get_role(self.product["role_id"])
         if role: await interaction.user.add_roles(role)
-        await update_user_log(interaction.client, interaction.user.id)
+
+        await update_user_log(interaction.client, interaction.user.id) 
 
         order_id = str(uuid.uuid4())[:8].upper()
         now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -384,7 +387,7 @@ class TopupModal(discord.ui.Modal, title="เติมเงินเข้า�
         try: val = float(self.amount.value)
         except: return await interaction.response.send_message("❌ ใส่ตัวเลขเท่านั้น", ephemeral=True)
         
-        # 🔥 แก้ไข: เพิ่มแท็กห้องส่งสลิปตามสั่ง
+        # 🔥 เพิ่มการแท็กห้องส่งสลิปตามสั่ง
         embed = discord.Embed(title="🧾 ใบแจ้งการชำระเงิน", description=f"ยอดโอน: **{val} บาท**", color=discord.Color.gold())
         embed.add_field(name="วิธีการ", value=f"1. สแกน QR Code\n2. ส่งรูปสลิปในห้อง <#{SLIP_CHANNEL_ID}>\n3. (ต้องส่งภายใน 5 นาที)", inline=False)
         embed.set_image(url=QR_CODE_URL)
@@ -482,8 +485,6 @@ async def on_message(message):
         msg = await message.channel.send("⏳ ตรวจสอบ...")
         try:
             img_data = requests.get(message.attachments[0].url).content
-            
-            # 🔥 ใช้ฟังก์ชัน Strict Check
             success, amount, ref, txt = check_slip_easyslip(message.attachments[0].url)
             
             if success:
@@ -495,7 +496,7 @@ async def on_message(message):
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
 
-                # 🔥🔥 แก้ไขตรงนี้: เพิ่ม Embed แสดงรายละเอียดสำเร็จ (เหมือนเดิม)
+                # 🔥🔥 แก้ไขตรงนี้: เพิ่ม Embed แสดงรายละเอียดสำเร็จ (ตามสั่ง)
                 embed_success = discord.Embed(title="✅ เติมเงินสำเร็จ", color=discord.Color.green())
                 embed_success.description = (
                     f"👤 **ลูกค้า:** {message.author.mention}\n"
