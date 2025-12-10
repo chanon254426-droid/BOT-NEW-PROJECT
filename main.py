@@ -19,7 +19,7 @@ from myserver import server_on
 # ⚠️ Token บอท
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 
-# ⚠️ SLIPOK API KEY (แก้ไขตามที่ขอ)
+# ⚠️ SLIPOK API KEY
 SLIPOK_API_KEY = 'SLIPOKA4R309R'
 
 # Channel IDs
@@ -39,7 +39,7 @@ SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/14
 
 # 🔥 [SMART CHECK] รายชื่อผู้รับที่ถูกต้อง
 EXPECTED_NAMES = ['ชานนท์ ขันทอง', 'Chanon Khantong', 'chanon khantong', 'chanon k', 'ชานนท์ ข', 'นายชานนท์ ขันทอง', 'นาย ชานนท์ ขันทอง', 'นายชานนท์ ข', 'นาย ชานนท์ ข']
-MIN_AMOUNT = 1.00 
+MIN_AMOUNT = 5.00 
 
 PRODUCTS = [
     {"id": "item1",  "emoji": "⭐",  "name": "𝙳𝙾𝙽𝙰𝚃𝙴",         "price": 89,  "role_id": 1431279741440364625},
@@ -131,13 +131,10 @@ def save_used_slip(trans_ref):
     slips.append(trans_ref)
     with open(SLIP_DB_FILE, "w") as f: json.dump(slips, f, indent=4)
 
-# 🔥 ระบบกู้คืนข้อมูลจาก Dashboard Log
 async def restore_database_from_logs(bot):
     print("🔄 กำลังกู้คืนข้อมูลจากห้อง Dashboard Log...")
     channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID)
-    if not channel:
-        print("❌ ไม่พบห้อง Dashboard Log")
-        return
+    if not channel: return
 
     balances = load_json(DB_FILE)
     totals = load_json(TOTAL_DB_FILE)
@@ -147,7 +144,6 @@ async def restore_database_from_logs(bot):
     async for message in channel.history(limit=None):
         if message.author.id != bot.user.id: continue
         if not message.embeds: continue
-
         embed = message.embeds[0]
         
         if not embed.footer or not embed.footer.text: continue
@@ -158,16 +154,14 @@ async def restore_database_from_logs(bot):
         bal_field = next((f for f in embed.fields if "เงินคงเหลือ" in f.name), None)
         if bal_field:
              bal_match = re.search(r"([\d.]+)", bal_field.value)
-             if bal_match:
-                 if float(balances.get(user_id, 0)) == 0:
-                     balances[user_id] = float(bal_match.group(1))
+             if bal_match and float(balances.get(user_id, 0)) == 0:
+                 balances[user_id] = float(bal_match.group(1))
 
         total_field = next((f for f in embed.fields if "ยอดเติมสะสม" in f.name), None)
         if total_field:
              total_match = re.search(r"([\d.]+)", total_field.value)
-             if total_match:
-                 if float(totals.get(user_id, 0)) == 0:
-                     totals[user_id] = float(total_match.group(1))
+             if total_match and float(totals.get(user_id, 0)) == 0:
+                 totals[user_id] = float(total_match.group(1))
         
         msg_ids[user_id] = message.id
         count += 1
@@ -175,7 +169,7 @@ async def restore_database_from_logs(bot):
     save_json(DB_FILE, balances)
     save_json(TOTAL_DB_FILE, totals)
     save_json(LOG_MSG_DB, msg_ids)
-    print(f"✅ กู้คืนข้อมูลลูกค้าสำเร็จ {count} รายการ")
+    print(f"✅ กู้คืนข้อมูลสำเร็จ {count} รายการ")
 
 # 🔥 ระบบเช็คสลิป (เปลี่ยนมาใช้ SlipOK)
 def check_slip_slipok(image_url):
@@ -235,9 +229,7 @@ class DashboardView(discord.ui.View):
             return await interaction.response.send_message("❌ เฉพาะแอดมินเท่านั้น", ephemeral=True)
         
         await interaction.response.defer(ephemeral=True)
-        
         await restore_database_from_logs(interaction.client) 
-        
         await update_all_user_logs(interaction.client)
         await interaction.followup.send("✅ กู้คืนข้อมูลและอัปเดต Dashboard เรียบร้อยแล้ว!")
 
@@ -266,8 +258,7 @@ async def update_user_log(bot, user_id):
             msg = await log_channel.fetch_message(msg_id)
             await msg.edit(embed=embed)
             return
-        except:
-            pass 
+        except: pass
 
     msg = await log_channel.send(embed=embed)
     msg_db[str(user_id)] = msg.id
@@ -302,7 +293,6 @@ class ConfirmBuyView(discord.ui.View):
             return await interaction.followup.send(content=f"❌ เงินไม่พอขาด `{price - data['balance']}`", ephemeral=True)
 
         update_money(interaction.user.id, -price) 
-        
         role = interaction.guild.get_role(self.product["role_id"])
         if role: await interaction.user.add_roles(role)
 
