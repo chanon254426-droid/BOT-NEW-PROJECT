@@ -13,42 +13,32 @@ from datetime import datetime, timedelta
 from myserver import server_on
 
 # =================================================================
-# ⚙️ ส่วนที่ 1: ตั้งค่าบอท
+# ⚙️ CONFIGURATION
 # =================================================================
 
-# ⚠️⚠️⚠️ แก้ไข: เอา Token บอทของคุณมาใส่ตรงนี้ ⚠️⚠️⚠️
-DISCORD_BOT_TOKEN = os.environ.get('TOKEN') 
+# ⚠️ Token บอท
+DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 
-# API Key EasySlip
-EASYSLIP_API_KEY = 'c5873b2f-d7a9-4f03-9267-166829da1f93'.strip()
+# ⚠️ API KEY ของ SLIPOK (สมัครที่ slipok.com)
+SLIPOK_API_KEY = 'SLIPOKA4R309R' 
 
-# ID ห้องต่างๆ
-SHOP_CHANNEL_ID = 1416797606180552714  
-SLIP_CHANNEL_ID = 1416797464350167090  
-ADMIN_LOG_ID = 1441466742885978144     
-HISTORY_CHANNEL_ID = 1444390933297631512 
+# Channel IDs
+SHOP_CHANNEL_ID = 1416797606180552714     # ห้องกดซื้อของ
+SLIP_CHANNEL_ID = 1416797464350167090     # ห้องส่งสลิป
+ADMIN_LOG_ID = 1441466742885978144        # ห้อง Log แอดมิน
+HISTORY_CHANNEL_ID = 1444390933297631512  # ห้องเก็บรูปสลิปย้อนหลัง
 
-# ห้อง Dashboard
+# 🔥 [NEW] ห้องสำหรับระบบ Dashboard
 DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423 
 DASHBOARD_LOG_CHANNEL_ID = 1444662604940181667 
 
-# ลิงก์รูปภาพ
+# Images
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg' 
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif?ex=692be314&is=692a9194&hm=bf9bfce543bee87e6334726e99e6f19f37cf457595e5e5b1ba05c0b678317cac&=&width=640&height=360'
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF_-_Fire_Force_Sho_Kusakabe_-_Descobrir_e_Compartilhar_GIFs.gif?ex=692d5f76&is=692c0df6&hm=a3344a6e695ceb3a513281745b49616df9e99da3e7960635fa2b94b3b8770ce4&'
 
-# 🔥 [SMART CHECK] อัปเดตรายชื่อตามที่คุณขอ (ครอบคลุมทุกแบบ)
-EXPECTED_NAMES = [
-    'ชานนท์ ขันทอง', 
-    'Chanon Khantong', 
-    'chanon khantong', 
-    'chanon k', 
-    'ชานนท์ ข', 
-    'นายชานนท์ ขันทอง', 
-    'นาย ชานนท์ ขันทอง', 
-    'นายชานนท์ ข', 
-    'นาย ชานนท์ ข'
-]
+# 🔥 [SMART CHECK] รายชื่อผู้รับที่ถูกต้อง
+EXPECTED_NAMES = ['ชานนท์ ขันทอง', 'Chanon Khantong', 'chanon khantong', 'chanon k', 'ชานนท์ ข', 'นายชานนท์ ขันทอง', 'นาย ชานนท์ ขันทอง', 'นายชานนท์ ข', 'นาย ชานนท์ ข']
 MIN_AMOUNT = 1.00 
 
 PRODUCTS = [
@@ -65,13 +55,13 @@ PRODUCTS = [
     {"id": "item11", "emoji": "🌃",  "name": "𝚖𝚊𝚐𝚒𝚌𝚎𝚢𝚎",       "price": 25,  "role_id": 1431231640058990652},
     {"id": "item12", "emoji": "🌷",  "name": "𝚁𝚎𝚊𝚕𝚕𝚒𝚟𝚎",       "price": 25,  "role_id": 1431204938373140513},
     {"id": "item13", "emoji": "🏞️",  "name": "ꜰᴀʟʟɪɴɢ",        "price": 25,  "role_id": 1444192569754910770},
-    {"id": "item14", "emoji": "🎀",  "name": "realistic𝚅4",        "price": 35,  "role_id": 1448142438131699722},
+    {"id": "item14", "emoji": "🎀",  "name": "realistic𝚅4",    "price": 35,  "role_id": 1448142438131699722},
     {"id": "item15", "emoji": "🎮",  "name": "𝙱𝙾𝙾𝚂𝚃 𝙵𝙿𝚂",       "price": 99,  "role_id": 1432010188340199504},
     {"id": "item16", "emoji": "🚧",  "name": "TOGYO MOD",       "price": 59,  "role_id": 1448142708286947449},
 ]
 
 # =================================================================
-# 💾 ระบบฐานข้อมูล
+# 💾 DATABASE SYSTEM
 # =================================================================
 DB_FILE = "user_balance.json"
 SLIP_DB_FILE = "used_slips.json"
@@ -137,65 +127,65 @@ def save_used_slip(trans_ref):
     slips.append(trans_ref)
     with open(SLIP_DB_FILE, "w") as f: json.dump(slips, f, indent=4)
 
-# 🔥 ระบบเช็คสลิป (Strict & Smart)
-def check_slip_easyslip(image_url):
-    print(f"Checking slip: {image_url}")
+# 🔥 [NEW] ระบบเช็คสลิปด้วย SLIPOK
+def check_slip_slipok(image_url):
+    print(f"Checking slip with SLIPOK: {image_url}")
     try:
+        # ดาวน์โหลดรูปสลิป
         img_data = requests.get(image_url).content
-        files = {'file': ('slip.jpg', io.BytesIO(img_data), 'image/jpeg')}
+        
+        # ส่งไปตรวจสอบที่ SlipOK
+        files = {'files': ('slip.jpg', io.BytesIO(img_data), 'image/jpeg')}
         response = requests.post(
-            "https://developer.easyslip.com/api/v1/verify",
-            headers={'Authorization': f'Bearer {EASYSLIP_API_KEY}'},
+            "https://api.slipok.com/api/line/apikey/verify",
+            headers={'x-authorization': SLIPOK_API_KEY},
             files=files, timeout=15
         )
         data = response.json()
 
-        if response.status_code == 200 and data['status'] == 200:
+        # ตรวจสอบผลลัพธ์
+        if data.get('success') is True:
             slip = data['data']
             
             # 1. เช็คยอดเงิน
-            amount = float(slip['amount']['amount'] if isinstance(slip['amount'], dict) else slip['amount'])
+            amount = float(slip['amount'])
             if amount < MIN_AMOUNT:
                 return False, 0, None, f"❌ ยอดต่ำกว่ากำหนด ({amount} < {MIN_AMOUNT})"
 
-            # 2. เช็คชื่อผู้รับ (ตาม List ที่คุณให้มา)
-            receiver_info = slip.get('receiver', {})
-            receiver_name = receiver_info.get('displayName', '') or receiver_info.get('name', '')
-            receiver_name = receiver_name.strip()
+            # 2. เช็คชื่อผู้รับ (Strict Name Check)
+            receiver = slip.get('receiver', {}).get('displayName') or slip.get('receiver', {}).get('name') or ""
+            receiver = receiver.strip()
             
-            if not receiver_name:
-                 # 🔥 ถ้า API ไม่ส่งชื่อมา -> ปัดตกทันที (ตามเงื่อนไข Strict)
+            if not receiver:
                  return False, 0, None, "❌ ไม่พบชื่อผู้รับในสลิป (API ไม่ส่งมา)"
 
-            # ล้างชื่อให้สะอาดเพื่อเปรียบเทียบ (ตัดเว้นวรรคซ้ำ, ตัวพิมพ์เล็ก)
-            clean_receiver = " ".join(receiver_name.lower().split())
-            
+            clean_receiver = " ".join(receiver.lower().split())
             is_name_valid = False
             for valid_name in EXPECTED_NAMES:
                 clean_valid = " ".join(valid_name.lower().split())
-                # ใช้ in เพื่อเช็คว่ามีส่วนหนึ่งส่วนใดตรงกันหรือไม่ (ครอบคลุมการย่อชื่อ)
                 if clean_valid in clean_receiver: 
                     is_name_valid = True
                     break
             
             if not is_name_valid:
-                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนให้: {receiver_name})"
+                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนให้: {receiver})"
 
-            # 3. เช็คเวลา (Strict Time: 5 Minutes)
+            # 3. เช็คเวลา (Strict Time)
             try:
-                dt_str = f"{slip['date']} {slip['time']}".replace("T", " ").split("+")[0].split(".")[0]
+                # SlipOK format เช่น "2023-10-25T12:00:00" หรือ "2023-10-25"
+                dt_str = str(slip.get('transDate')) + " " + str(slip.get('transTime'))
+                clean_str = dt_str.replace("T", " ").split("+")[0].strip()
                 
+                # ลองแปลงหลาย Format เผื่อ API ส่งมาต่างกัน
+                formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]
                 slip_dt = None
-                formats = ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d"]
                 for fmt in formats:
                     try:
-                        slip_dt = datetime.strptime(dt_str, fmt)
+                        slip_dt = datetime.strptime(clean_str, fmt)
                         break
                     except: continue
-                
+
                 if slip_dt:
-                    if slip_dt.year > 2500: slip_dt = slip_dt.replace(year=slip_dt.year - 543)
-                    
                     now = datetime.utcnow() + timedelta(hours=7)
                     diff = (now - slip_dt).total_seconds() / 60
                     
@@ -208,7 +198,7 @@ def check_slip_easyslip(image_url):
 
             return True, amount, slip['transRef'], "OK"
         else:
-            return False, 0, None, data.get('message', 'สลิปไม่ผ่านการตรวจสอบ')
+            return False, 0, None, data.get('message', 'สลิปไม่ถูกต้อง หรือไม่ชัดเจน')
     except Exception as e:
         return False, 0, None, f"System Error: {str(e)}"
 
@@ -281,39 +271,40 @@ class ConfirmBuyView(discord.ui.View):
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id: return
         
+        # Defer เพื่อกัน Timeout
+        await interaction.response.defer()
+
         data = get_data(interaction.user.id)
         price = self.product["price"]
 
         if data['balance'] < price:
-            return await interaction.response.edit_message(content=f"❌ เงินไม่พอขาด `{price - data['balance']}`", view=None, embed=None)
+            return await interaction.followup.send(content=f"❌ เงินไม่พอขาด `{price - data['balance']}`", ephemeral=True)
 
-        update_money(interaction.user.id, -price) # ตัดเงิน
+        update_money(interaction.user.id, -price) 
         
         role = interaction.guild.get_role(self.product["role_id"])
         if role: await interaction.user.add_roles(role)
 
-        await update_user_log(interaction.client, interaction.user.id) # อัปเดต Log
+        await update_user_log(interaction.client, interaction.user.id)
 
         order_id = str(uuid.uuid4())[:8].upper()
         now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        # 🔥 ใบเสร็จแนวตั้ง (แบบรูปแรก)
-        embed = discord.Embed(title="🔔 Order Successful", color=discord.Color.from_rgb(50, 255, 120))
-        
-        embed.add_field(name="👤 ผู้สั่ง", value=f"{interaction.user.mention}", inline=False)
-        embed.add_field(name="🚀 ระยะเวลา", value="ถาวร", inline=False)
-        embed.add_field(name="🔗 เซิร์ฟเวอร์", value="[SHOP SERVER](https://discord.gg/your-link)", inline=False)
-        embed.add_field(name="👤 ชื่อสินค้า", value=f"```\n{self.product['name']}\n```", inline=False)
-        embed.add_field(name="💎 จำนวน", value="1 ชิ้น", inline=False)
-        embed.add_field(name="💰 ราคารวม", value=f"{price} บาท", inline=False)
-        embed.add_field(name="🟢 สถานะ", value="สำเร็จ 100%", inline=False)
-        embed.add_field(name="🧾 Order ID", value=f"`{order_id}`", inline=False)
-        embed.add_field(name="📦 มอบสินค้า", value="เรียบร้อยแล้ว", inline=False)
-        
+        embed = discord.Embed(title="✅ Order Successful", color=discord.Color.green())
+        receipt_text = (
+            f"👤 ผู้สั่ง   : {interaction.user.display_name}\n"
+            f"📦 สินค้า    : {self.product['name']}\n"
+            f"💎 ราคา     : {price} บาท\n"
+            f"🧾 Order ID : {order_id}\n"
+            f"🗓️ วันที่     : {now_str}"
+        )
+        embed.description = f"```yaml\n{receipt_text}\n```"
+        embed.add_field(name="💰 ยอดเงินคงเหลือ", value=f"`{data['balance'] - price} บาท`", inline=True)
+        embed.add_field(name="📦 สถานะสินค้า", value="`✅ ส่งมอบแล้ว`", inline=True)
         embed.set_image(url=SUCCESS_GIF_URL)
-        embed.set_footer(text=f"ขอบคุณที่ใช้บริการครับ • {now_str}", icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text=f"ขอบคุณที่ใช้บริการครับ", icon_url=interaction.user.display_avatar.url)
         
-        await interaction.response.edit_message(content=None, embed=embed, view=None)
+        await interaction.edit_original_response(content=None, embed=embed, view=None)
         
         if log := interaction.guild.get_channel(ADMIN_LOG_ID):
             await log.send(f"🛒 **[BUY]** {interaction.user.mention} ซื้อ **{self.product['name']}** (ID: {order_id})")
@@ -348,7 +339,7 @@ class MainShopView(discord.ui.View):
     @discord.ui.button(label="ล้างค่า", style=discord.ButtonStyle.danger, emoji="🗑️", custom_id="clear")
     async def clear(self, interaction, button): await interaction.response.edit_message(view=MainShopView())
 
-    @discord.ui.select(placeholder="🛒 เลือกสินค้า...", options=[discord.SelectOption(label=p['name'], value=p['id'], description=f"{p['price']} บาท", emoji=p["emoji"]) for p in PRODUCTS], custom_id="shop_select")
+    @discord.ui.select(placeholder="เลือกสินค้า...", options=[discord.SelectOption(label=p['name'], value=p['id'], description=f"{p['price']} บาท", emoji=p["emoji"]) for p in PRODUCTS], custom_id="shop_select")
     async def buy(self, interaction, select):
         prod = next(p for p in PRODUCTS if p['id'] == select.values[0])
         bal = get_data(interaction.user.id)['balance']
@@ -404,7 +395,6 @@ async def setup_shop(interaction):
     await interaction.channel.send(embed=embed_shop, view=MainShopView())
     await interaction.followup.send("✅ Done!")
 
-# 🔥 [FIXED] คำสั่งแอดมิน UI เดิม
 @bot.tree.command(name="add_money")
 async def add_money(interaction, user: discord.Member, amount: float):
     new_bal = update_money(user.id, amount, is_topup=True)
@@ -415,31 +405,43 @@ async def add_money(interaction, user: discord.Member, amount: float):
     embed.add_field(name="ยอดใหม่", value=f"{new_bal:.2f} บาท", inline=True)
     
     await interaction.response.send_message(embed=embed)
-    
     if log := bot.get_channel(ADMIN_LOG_ID):
         await log.send(f"🔧 **[ADMIN]** {interaction.user.mention} ปรับเงิน {user.mention} {amount} บาท")
 
-# 🔥 [FIXED] Log เดิม (แนวตั้ง)
+# 🔥 [UPDATED] ใช้ SLIPOK และปรับปรุงหน้าตาแจ้งเตือน
 @bot.event
 async def on_message(message):
     if message.author.bot: return
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        msg = await message.channel.send("⏳ ตรวจสอบ...")
+        msg = await message.channel.send("⏳ ตรวจสอบสลิปกับ SLIPOK...")
         try:
             img_data = requests.get(message.attachments[0].url).content
-            success, amount, ref, txt = check_slip_easyslip(message.attachments[0].url)
+            
+            # ใช้ฟังก์ชันใหม่ที่เป็น SLIPOK
+            success, amount, ref, txt = check_slip_slipok(message.attachments[0].url)
             
             if success:
                 if is_slip_used(ref):
                     await msg.edit(content="❌ สลิปซ้ำ")
                     return
                 
+                # เก็บยอดเดิมก่อนอัปเดต เพื่อใช้แสดงผล
+                old_bal = get_data(message.author.id)['balance']
                 new_bal = update_money(message.author.id, amount, is_topup=True)
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
 
-                await msg.edit(content=f"✅ เติมเงินสำเร็จ {amount} บาท\nคงเหลือ {new_bal} บาท")
+                # 🔥 [IMPROVED] แจ้งเตือนลูกค้าแบบสวยงาม (ตามที่ขอ)
+                success_embed = discord.Embed(title="✅ เติมเงินสำเร็จ! | Payment Successful", color=discord.Color.green())
+                success_embed.add_field(name="💵 ยอดเงินเข้า", value=f"`+{amount:,.2f} บาท`", inline=False)
+                success_embed.add_field(name="💳 ยอดเงินคงเหลือ", value=f"`{old_bal:,.2f}` ➔ `{new_bal:,.2f} บาท`", inline=False)
+                success_embed.add_field(name="📅 เวลาทำรายการ", value=f"{datetime.now().strftime('%d/%m/%Y %H:%M')}", inline=True)
+                success_embed.add_field(name="🧾 Ref", value=f"`{ref}`", inline=True)
+                success_embed.set_footer(text="ขอบคุณที่ใช้บริการครับ", icon_url=message.author.display_avatar.url)
+
+                await msg.edit(content=message.author.mention, embed=success_embed)
                 
+                # Log เดิม (แนวตั้ง + รูป)
                 if hist := bot.get_channel(HISTORY_CHANNEL_ID):
                     log_embed = discord.Embed(title="🧾 บันทึกการเติมเงิน (Log)", color=discord.Color.blue())
                     log_embed.description = (
@@ -452,7 +454,7 @@ async def on_message(message):
                     log_embed.set_image(url="attachment://slip.jpg")
                     await hist.send(embed=log_embed, file=f)
 
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
                 await message.delete()
                 await msg.delete()
             else:
@@ -463,4 +465,3 @@ async def on_message(message):
 server_on()
 # ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
-
