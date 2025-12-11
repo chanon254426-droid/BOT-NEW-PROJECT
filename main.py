@@ -37,17 +37,14 @@ QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif'
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif'
 
-# 🔥 [SUPER SMART CHECK] รายชื่อผู้รับ (รวมทุกแบบที่เป็นไปได้)
+# 🔥 [SMART CHECK] รายชื่อผู้รับ
 EXPECTED_NAMES = [
-    # ภาษาไทย
-    'ชานนท์ ขันทอง', 'นายชานนท์ ขันทอง', 'นาย ชานนท์ ขันทอง',
-    'ชานนท์ ข', 'นายชานนท์ ข', 'นาย ชานนท์ ข', # รองรับชื่อย่อ
-    'ชานนท์ ขัน', 'นายชานนท์ ขัน',
-    
-    # ภาษาอังกฤษ
-    'chanon khantong', 'mr. chanon khantong', 'mr chanon khantong',
-    'chanon k', 'mr. chanon k', 'mr chanon k',
-    'chanon kh', 'chanon khan'
+    'ชานนท์ ขันทอง',      'นายชานนท์ ขันทอง',    'นาย ชานนท์ ขันทอง',
+    'ชานนท์ ข',          'นายชานนท์ ข',        'นาย ชานนท์ ข',
+    'ชานนท์ ขัน',        'นายชานนท์ ขัน',
+    'chanon khantong',   'mr. chanon khantong', 'mr chanon khantong',
+    'chanon k',          'mr. chanon k',        'mr chanon k',
+    'chanon kh',         'chanon khan'
 ]
 MIN_AMOUNT = 1.00
 
@@ -58,22 +55,22 @@ PRODUCTS = [
     {"id": "item4",  "emoji": "⚔️",  "name": "𝙰𝙻𝙻 𝚆𝙴𝙰𝙿𝙾𝙽",       "price": 139, "role_id": 1444190694674792592},
     {"id": "item5",  "emoji": "💻",  "name": "ลบประวัติ CMD",     "price": 79,  "role_id": 1444191270372114552},
     {"id": "item6",  "emoji": "🗑️",  "name": "ลบประวัติรันโปรแกรม","price": 49,  "role_id": 1444191566838370365},
-    {"id": "item7",  "emoji": "💎",  "name": "[Reshade] 𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟷",      "price": 25,  "role_id": 1431250097135419505},
-    {"id": "item8",  "emoji": "🌈",  "name": "[Reshade] 𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟸",      "price": 25,  "role_id": 1431234346202959973},
-    {"id": "item9",  "emoji": "🔥",  "name": "[Reshade] 𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟹",      "price": 25,  "role_id": 1431249584054734929},
-    {"id": "item10", "emoji": "🎧",  "name": "[Reshade] 𝚜𝚞𝚗𝚔𝚒𝚜𝚜𝚎𝚍",       "price": 25,  "role_id": 1431278653760737340},
-    {"id": "item11", "emoji": "🌃",  "name": "[Reshade] 𝚖𝚊𝚐𝚒𝚌𝚎𝚢𝚎",        "price": 25,  "role_id": 1431231640058990652},
-    {"id": "item12", "emoji": "🌷",  "name": "[Reshade] 𝚁𝚎𝚊𝚕𝚕𝚒𝚟𝚎",        "price": 25,  "role_id": 1431204938373140513},
-    {"id": "item13", "emoji": "🏞️",  "name": "[Reshade] ꜰᴀʟʟɪɴɢ",         "price": 25,  "role_id": 1444192569754910770},
-    {"id": "item14", "emoji": "🎀",  "name": "[Reshade] realistic𝚅4",         "price": 35,  "role_id": 1448142438131699722},
-    {"id": "item15", "emoji": "🌌",  "name": "[Reshade] realistic𝚅5",         "price": 35,  "role_id": 1448171343022526574},
-    {"id": "item16", "emoji": "🍀",  "name": "[Reshade] realistic𝚅6",         "price": 35,  "role_id": 1448171385942966392},
+    {"id": "item7",  "emoji": "💎",  "name": "𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟷",      "price": 25,  "role_id": 1431250097135419505},
+    {"id": "item8",  "emoji": "🌈",  "name": "𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟸",      "price": 25,  "role_id": 1431234346202959973},
+    {"id": "item9",  "emoji": "🔥",  "name": "𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟹",      "price": 25,  "role_id": 1431249584054734929},
+    {"id": "item10", "emoji": "🎧",  "name": "𝚜𝚞𝚗𝚔𝚒𝚜𝚜𝚎𝚍",       "price": 25,  "role_id": 1431278653760737340},
+    {"id": "item11", "emoji": "🌃",  "name": "𝚖𝚊𝚐𝚒𝚌𝚎𝚢𝚎",        "price": 25,  "role_id": 1431231640058990652},
+    {"id": "item12", "emoji": "🌷",  "name": "𝚁𝚎𝚊𝚕𝚕𝚒𝚟𝚎",        "price": 25,  "role_id": 1431204938373140513},
+    {"id": "item13", "emoji": "🏞️",  "name": "ꜰᴀʟʟɪɴɢ",         "price": 25,  "role_id": 1444192569754910770},
+    {"id": "item14", "emoji": "🎀",  "name": "realistic𝚅4",         "price": 35,  "role_id": 1448142438131699722},
+    {"id": "item15", "emoji": "🌌",  "name": "realistic𝚅5",         "price": 35,  "role_id": 1448171343022526574},
+    {"id": "item16", "emoji": "🍀",  "name": "realistic𝚅6",         "price": 35,  "role_id": 1448171385942966392},
     {"id": "item17", "emoji": "🎮",  "name": "𝙱𝙾𝙾𝚂𝚃 𝙵𝙿𝚂",        "price": 99,  "role_id": 1432010188340199504},
     {"id": "item18", "emoji": "🚧",  "name": "TOGYO MOD",        "price": 59,  "role_id": 1448142708286947449},
-    {"id": "item19", "emoji": "⚡",  "name": "[Reshade] X Togyo mod",        "price": 35,  "role_id": 1448217708146589747},
-    {"id": "item20", "emoji": "❓",  "name": "[Reshade] Tonedark❓",        "price": 35,  "role_id": 1448197995701993543},
-    {"id": "item21", "emoji": "🚣",  "name": "[Reshade] realistic𝚅7",        "price": 35,  "role_id": 1448313586915999755},
-    {"id": "item22", "emoji": "🍰",  "name": "[Reshade] PEKKY",        "price": 35,  "role_id": 1448263468355424298},
+    {"id": "item19", "emoji": "⚡",  "name": "X Togyo mod",        "price": 35,  "role_id": 1448217708146589747},
+    {"id": "item20", "emoji": "❓",  "name": "Tonedark❓",        "price": 35,  "role_id": 1448197995701993543},
+    {"id": "item21", "emoji": "🚣",  "name": "realistic𝚅7",        "price": 35,  "role_id": 1448313586915999755},
+    {"id": "item22", "emoji": "🍰",  "name": "PEKKY",        "price": 35,  "role_id": 1448263468355424298},
 ]
 
 # =================================================================
@@ -185,14 +182,13 @@ async def restore_database_from_logs(bot):
     save_json(LOG_MSG_DB, msg_ids)
     print(f"✅ กู้คืนข้อมูลลูกค้าสำเร็จ {count} รายการ")
 
-# 🔥 [ULTIMATE CHECK] ระบบเช็คสลิป EasySlip (เสถียรสุดๆ)
+# 🔥 [FIXED TIME CHECK] ระบบเช็คสลิป EasySlip (เน้นเรื่องเวลา + ชื่อ)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
         img_data = requests.get(image_url).content
         files = {'file': ('slip.jpg', io.BytesIO(img_data), 'image/jpeg')}
         
-        # ส่งรูปไป EasySlip API
         response = requests.post(
             "https://developer.easyslip.com/api/v1/verify",
             headers={'Authorization': f'Bearer {EASYSLIP_API_KEY}'},
@@ -211,56 +207,43 @@ def check_slip_easyslip(image_url):
             if amount < MIN_AMOUNT:
                 return False, 0, None, f"❌ ยอดต่ำกว่ากำหนด ({amount} < {MIN_AMOUNT})"
 
-            # 2. เช็คชื่อผู้รับ (แบบเจาะลึก & ตัดเว้นวรรค)
-            receiver_data = slip.get('receiver', {})
+            # 2. เช็คชื่อผู้รับ (ต้องตรงตามลิสต์)
+            receiver = slip.get('receiver', {}).get('displayName') or slip.get('receiver', {}).get('name') or ""
+            receiver = receiver.strip()
             
-            # พยายามดึงชื่อจากทุกที่ที่เป็นไปได้
-            receiver_name = receiver_data.get('displayName') or receiver_data.get('name')
-            if not receiver_name and 'account' in receiver_data:
-                # บางทีชื่อซ่อนอยู่ใน account info
-                acc = receiver_data['account']
-                if isinstance(acc, dict):
-                    receiver_name = acc.get('name')
-                    if isinstance(receiver_name, dict):
-                        receiver_name = receiver_name.get('th') or receiver_name.get('en')
-            
-            if not receiver_name: receiver_name = ""
-            
-            # ⚠️ ฟังก์ชันทำความสะอาดชื่อ (ลบเว้นวรรค, ตัวเล็ก)
-            def normalize_name(text):
-                if not text: return ""
-                # ลบเว้นวรรคทั้งหมด และเปลี่ยนเป็นตัวเล็ก
-                return text.replace(" ", "").lower()
+            # ถ้าเป็น Wallet (ไม่มีชื่อ) อนุโลมให้ผ่าน (ตามที่คุณเคยบอกไว้)
+            # แต่ถ้าอยากให้ Strict ต้องเปิดบรรทัดนี้:
+            # if not receiver: return False, 0, None, "❌ ไม่พบชื่อผู้รับ"
 
-            clean_receiver_slip = normalize_name(receiver_name)
-            
-            # ถ้า API ไม่ส่งชื่อมาเลย -> ปัดตก
-            if not clean_receiver_slip:
-                 return False, 0, None, "❌ ไม่พบชื่อผู้รับในสลิป (ตรวจสอบไม่ได้)"
-
-            is_name_valid = False
-            for valid_name in EXPECTED_NAMES:
-                clean_valid_name = normalize_name(valid_name)
+            if receiver:
+                clean_receiver = " ".join(receiver.lower().split())
+                is_name_valid = False
+                for valid_name in EXPECTED_NAMES:
+                    clean_valid = " ".join(valid_name.lower().split())
+                    if clean_valid in clean_receiver: 
+                        is_name_valid = True
+                        break
                 
-                # เปรียบเทียบแบบยืดหยุ่น:
-                # 1. ชื่อในลิสต์ ตรงกับ ชื่อในสลิป
-                # 2. หรือ ชื่อในสลิป เป็นส่วนหนึ่งของชื่อในลิสต์ (กรณีสลิปย่อ)
-                # 3. หรือ ชื่อในลิสต์ เป็นส่วนหนึ่งของชื่อในสลิป (กรณีสลิปยาวกว่า)
-                if (clean_valid_name == clean_receiver_slip) or \
-                   (clean_receiver_slip in clean_valid_name) or \
-                   (clean_valid_name in clean_receiver_slip):
-                    is_name_valid = True
-                    break
-            
-            if not is_name_valid:
-                 print(f"DEBUG: Slip Name='{clean_receiver_slip}' VS Expected={EXPECTED_NAMES}") # Debug ใน Console
-                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนไป: {receiver_name})"
+                if not is_name_valid:
+                    return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนไป: {receiver})"
 
-            # 3. เช็คเวลา (5 นาที)
+            # 3. 🔥 เช็คเวลา (ปรับปรุงใหม่ให้รองรับทุกรูปแบบ)
             try:
-                dt_str = f"{slip['date']} {slip['time']}".replace("T", " ").split("+")[0].split(".")[0]
+                # ดึงวันที่และเวลาออกมาเป็น String ก่อน
+                d_str = str(slip.get('date', ''))
+                t_str = str(slip.get('time', ''))
+                
+                # รวมเป็น DateTime String (ตัด Timezone ทิ้งถ้ามี)
+                dt_str = f"{d_str} {t_str}".replace("T", " ").split("+")[0].split(".")[0]
+                
                 slip_dt = None
-                formats = ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d"]
+                # ลอง Format หลายๆ แบบเพื่อความชัวร์
+                formats = [
+                    "%Y-%m-%d %H:%M:%S", 
+                    "%d/%m/%Y %H:%M:%S", 
+                    "%Y-%m-%d %H:%M",
+                    "%d/%m/%Y %H:%M"
+                ]
                 
                 for fmt in formats:
                     try:
@@ -269,20 +252,31 @@ def check_slip_easyslip(image_url):
                     except: continue
                 
                 if slip_dt:
+                    # ถ้าปีเป็น พ.ศ. (เกิน 2500) ให้แปลงเป็น ค.ศ.
                     if slip_dt.year > 2500: slip_dt = slip_dt.replace(year=slip_dt.year - 543)
                     
                     # เวลาปัจจุบัน (+7 UTC สำหรับไทย)
                     now = datetime.utcnow() + timedelta(hours=7)
+                    
+                    # หาผลต่าง (นาที)
                     diff = (now - slip_dt).total_seconds() / 60
                     
-                    # ❌ เก่าเกิน 5 นาที
-                    if diff > 5: return False, 0, None, f"❌ สลิปเก่าเกิน 5 นาที ({int(diff)} นาทีที่แล้ว)"
-                    # ❌ อนาคตเกิน 5 นาที
-                    if diff < -5: return False, 0, None, "❌ เวลาสลิปผิดปกติ (อนาคต)"
+                    print(f"Time Check: Slip={slip_dt}, Now={now}, Diff={diff:.2f} mins")
+
+                    # ❌ กฎเหล็ก: ห้ามเก่าเกิน 5 นาที
+                    if diff > 5: 
+                        return False, 0, None, f"❌ สลิปเก่าเกิน 5 นาที ({int(diff)} นาทีที่แล้ว)"
+                    
+                    # ❌ กฎเหล็ก: ห้ามอนาคตเกิน 5 นาที
+                    if diff < -5: 
+                        return False, 0, None, "❌ เวลาสลิปผิดปกติ (อนาคต)"
+                else:
+                    # ถ้าอ่านเวลาไม่ได้เลย -> ปัดตกเพื่อความปลอดภัย
+                    return False, 0, None, "❌ ไม่สามารถตรวจสอบเวลาในสลิปได้"
                 
             except Exception as e:
                 print(f"Time Check Error: {e}")
-                pass 
+                return False, 0, None, "❌ เกิดข้อผิดพลาดในการตรวจสอบเวลา"
 
             return True, amount, slip['transRef'], "OK"
         else:
