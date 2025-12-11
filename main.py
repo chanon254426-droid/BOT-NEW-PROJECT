@@ -37,7 +37,7 @@ QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_GIF_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif'
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif'
 
-# 🔥 [SMART CHECK] รายชื่อผู้รับ
+# 🔥 [SMART CHECK] รายชื่อผู้รับที่ถูกต้อง
 EXPECTED_NAMES = [
     'ชานนท์ ขันทอง',      'นายชานนท์ ขันทอง',    'นาย ชานนท์ ขันทอง',
     'ชานนท์ ข',          'นายชานนท์ ข',        'นาย ชานนท์ ข',
@@ -182,7 +182,7 @@ async def restore_database_from_logs(bot):
     save_json(LOG_MSG_DB, msg_ids)
     print(f"✅ กู้คืนข้อมูลลูกค้าสำเร็จ {count} รายการ")
 
-# 🔥 [FIXED] ระบบเช็คสลิป EasySlip (แบบละเอียด Time Check + Name Check)
+# 🔥 [STRICT CHECK] ระบบเช็คสลิป (ชื่อต้องตรง + เวลาต้องเป๊ะ)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
@@ -203,45 +203,35 @@ def check_slip_easyslip(image_url):
             raw_amount = slip['amount']
             if isinstance(raw_amount, dict): raw_amount = raw_amount.get('amount', 0)
             amount = float(raw_amount)
-
             if amount < MIN_AMOUNT:
                 return False, 0, None, f"❌ ยอดต่ำกว่ากำหนด ({amount} < {MIN_AMOUNT})"
 
-            # 2. เช็คชื่อผู้รับ (Strict Check)
-            receiver = slip.get('receiver', {}).get('displayName') or slip.get('receiver', {}).get('name') or ""
-            receiver = receiver.strip()
+            # 2. เช็คชื่อผู้รับ (Strict Check: ต้องตรงเท่านั้น)
+            receiver_info = slip.get('receiver', {})
+            receiver_name = receiver_info.get('displayName') or receiver_info.get('name') or ""
+            receiver_name = receiver_name.strip()
             
-            # 🔥 ถ้าไม่มีชื่อ (เช่น Wallet) -> อนุโลมให้ผ่านได้ (ตามที่คุณขอในรอบก่อนหน้านู้น) 
-            # หรือถ้าอยากให้ Strict สุดๆ ก็เอาบรรทัดนี้ออก
-            # if not receiver:
-            #     return False, 0, None, "❌ สลิปนี้ไม่ระบุชื่อผู้รับ (Wallet ไม่ได้)"
+            # ถ้าไม่มีชื่อ (เช่น Wallet) -> ปัดตก
+            if not receiver_name:
+                 return False, 0, None, "❌ สลิปนี้ไม่ระบุชื่อผู้รับ (Wallet ไม่ได้ ต้องโอนผ่านธนาคารที่มีชื่อเท่านั้น)"
 
-            if receiver:
-                clean_receiver = " ".join(receiver.lower().split())
-                is_name_valid = False
-                for valid_name in EXPECTED_NAMES:
-                    clean_valid = " ".join(valid_name.lower().split())
-                    if clean_valid in clean_receiver: 
-                        is_name_valid = True
-                        break
-                
-                if not is_name_valid:
-                    return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนไป: {receiver})"
+            clean_receiver = " ".join(receiver_name.lower().split())
+            is_name_valid = False
+            for valid_name in EXPECTED_NAMES:
+                clean_valid = " ".join(valid_name.lower().split())
+                if clean_valid in clean_receiver: 
+                    is_name_valid = True
+                    break
+            
+            # ถ้าชื่อไม่ตรง -> ปัดตก
+            if not is_name_valid:
+                 return False, 0, None, f"❌ ชื่อผู้รับไม่ถูกต้อง (โอนไป: {receiver_name})"
 
-            # 3. เช็คเวลา (Time Check 5 นาที - ปรับปรุงใหม่)
+            # 3. เช็คเวลา (Strict Time: 5 นาที)
             try:
-                # ดึงวันที่และเวลาอย่างปลอดภัย
-                d_str = str(slip.get('date', ''))
-                t_str = str(slip.get('time', ''))
-                dt_str = f"{d_str} {t_str}".replace("T", " ").split("+")[0].split(".")[0]
-                
+                dt_str = f"{slip['date']} {slip['time']}".replace("T", " ").split("+")[0].split(".")[0]
                 slip_dt = None
-                formats = [
-                    "%Y-%m-%d %H:%M:%S", 
-                    "%d/%m/%Y %H:%M:%S", 
-                    "%Y-%m-%d %H:%M",
-                    "%d/%m/%Y %H:%M"
-                ]
+                formats = ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d"]
                 
                 for fmt in formats:
                     try:
@@ -257,16 +247,15 @@ def check_slip_easyslip(image_url):
                     diff = (now - slip_dt).total_seconds() / 60
                     
                     # ❌ เก่าเกิน 5 นาที
-                    if diff > 5: return False, 0, None, f"❌ เวลาสลิปผิดปกติ ({int(diff)} นาทีที่แล้ว)"
+                    if diff > 5: return False, 0, None, f"❌ เวลาสลิปไม่ถูกต้อง ({int(diff)} นาทีที่แล้ว)"
                     # ❌ เวลาอนาคตเกิน 5 นาที
-                    if diff < -5: return False, 0, None, "❌ เวลาสลิปผิดปกติ"
+                    if diff < -5: return False, 0, None, f"❌ เวลาสลิปไม่ถูกต้อง (อนาคต {int(abs(diff))} นาที)"
                 else:
-                     # ถ้าอ่านเวลาไม่ออกจริงๆ ให้ผ่านไปก่อน (หรือจะปรับให้ False ก็ได้)
-                     pass
-
+                    return False, 0, None, "❌ อ่านเวลาสลิปไม่ได้"
+                
             except Exception as e:
                 print(f"Time Check Error: {e}")
-                # return False, 0, None, "❌ เกิดข้อผิดพลาดในการตรวจสอบเวลา"
+                return False, 0, None, "❌ เกิดข้อผิดพลาดในการตรวจสอบเวลา"
 
             return True, amount, slip['transRef'], "OK"
         else:
@@ -295,7 +284,6 @@ class DashboardView(discord.ui.View):
 async def update_user_log(bot, user_id):
     log_channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID)
     if not log_channel: return
-
     data = get_data(user_id)
     if data['total'] <= 0 and data['balance'] <= 0: return
 
