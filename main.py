@@ -49,7 +49,7 @@ EXPECTED_NAMES = [
 ]
 MIN_AMOUNT = 1.00
 
-# ใส่สินค้าได้ไม่จำกัด (ระบบจะแบ่งหน้าให้เอง)
+# สินค้า (ใส่ได้ไม่จำกัด ระบบจะแบ่งหน้าเป็นปุ่ม Grid ให้เอง)
 PRODUCTS = [
     {"id": "item1",  "emoji": "⭐",  "name": "𝙳𝙾𝙽𝙰𝚃𝙴",         "price": 89,  "role_id": 1431279741440364625},
     {"id": "item2",  "emoji": "👻",  "name": "ᴍᴏᴅ ᴅᴇᴠᴏᴜʀ",       "price": 120, "role_id": 1432064283767738571},
@@ -76,10 +76,12 @@ PRODUCTS = [
     {"id": "item23", "emoji": "🍕",  "name": "[Reshade] Realistic-𝚅8",         "price": 35,  "role_id": 1449643401908584490},
     {"id": "item24", "emoji": "🚀",  "name": "[CMD] 𝖥𝖱𝖠𝖬𝖤 𝖲𝖸𝖭𝖢",         "price": 120,  "role_id": 1449653924209492098},
     {"id": "item25", "emoji": "💻",  "name": "[CMD] 𝖱𝖤𝖡𝖮𝖱𝖭𝖪𝖨𝖫𝖫",         "price": 159,  "role_id": 1449657396497743883},
+    {"id": "item26", "emoji": "💻",  "name": "[CMD] 𝟨𝟢 𝟩𝖤𝖳 𝟪𝖠𝖢𝖪",        "price": 159,  "role_id": 1449658031301333153},
+    {"id": "item27", "emoji": "🏆",  "name": "VVIP [ของยกร้าน]🏆",        "price": 599,  "role_id": 1449658582244262041},
 ]
 
 # =================================================================
-# 💾 DATABASE SYSTEM (UNCHANGED)
+# 💾 DATABASE SYSTEM
 # =================================================================
 DB_FILE = "user_balance.json"
 SLIP_DB_FILE = "used_slips.json"
@@ -211,7 +213,7 @@ def check_slip_easyslip(image_url):
     except Exception as e: return False, 0, None, f"Error: {str(e)}"
 
 # =================================================================
-# 🎨 MODERN UI VIEWS & EMBEDS
+# 🎨 MODERN UI VIEWS & EMBEDS (GRID SYSTEM)
 # =================================================================
 
 class DashboardView(discord.ui.View):
@@ -257,7 +259,7 @@ async def update_all_user_logs(bot):
         await update_user_log(bot, uid)
         await asyncio.sleep(0.5)
 
-# --- SHOPPING FLOW ---
+# --- SHOPPING FLOW (GRID SYSTEM) ---
 
 class ProductConfirmView(discord.ui.View):
     def __init__(self, product, user_id):
@@ -284,7 +286,6 @@ class ProductConfirmView(discord.ui.View):
         
         order_id = str(uuid.uuid4())[:8].upper()
         
-        # Modern Receipt Embed
         embed = discord.Embed(title="✅ TRANSACTION SUCCESSFUL", color=SUCCESS_COLOR)
         embed.description = (
             f"```yaml\n"
@@ -310,54 +311,61 @@ class ProductConfirmView(discord.ui.View):
         if interaction.user.id == self.user_id:
             await interaction.response.edit_message(content="❌ Transaction Cancelled", embed=None, view=None)
 
-class ProductSelect(discord.ui.Select):
-    def __init__(self, products, page=0):
-        self.products = products
-        self.page = page
-        options = []
-        
-        # Pagination Logic (23 items per page to leave room for Next/Prev)
-        start = page * 23
-        end = start + 23
-        current_items = products[start:end]
-        
-        for p in current_items:
-            options.append(discord.SelectOption(label=p['name'], value=p['id'], description=f"Price: {p['price']} THB", emoji=p['emoji']))
-        
-        if end < len(products):
-            options.append(discord.SelectOption(label="Next Page >>", value="next_page", emoji="➡️", description="View more items"))
-        if page > 0:
-            options.append(discord.SelectOption(label="<< Prev Page", value="prev_page", emoji="⬅️", description="Go back"))
-            
-        super().__init__(placeholder=f"Select Item (Page {page+1})", min_values=1, max_values=1, options=options)
+# 🔥 NEW: Product Button Logic
+class ProductButton(discord.ui.Button):
+    def __init__(self, product):
+        # ใช้ Emoji กับ ชื่อสินค้าในปุ่ม (อาจจะตัดคำถ้าชื่อยาวเกินไป)
+        super().__init__(style=discord.ButtonStyle.secondary, label=product['name'][:15], emoji=product['emoji'], row=None)
+        self.product = product
 
     async def callback(self, interaction: discord.Interaction):
-        value = self.values[0]
-        
-        if value == "next_page":
-            view = ProductBrowserView(self.products, self.page + 1)
-            await interaction.response.edit_message(view=view)
-            return
-        elif value == "prev_page":
-            view = ProductBrowserView(self.products, self.page - 1)
-            await interaction.response.edit_message(view=view)
-            return
-
-        selected = next((p for p in self.products if p['id'] == value), None)
-        if not selected: return
-
         # Show Product Detail Card
-        embed = discord.Embed(title=f"{selected['emoji']} {selected['name']}", color=ACCENT_COLOR)
-        embed.add_field(name="Price", value=f"```fix\n฿ {selected['price']:.2f}```", inline=True)
+        embed = discord.Embed(title=f"{self.product['emoji']} {self.product['name']}", color=ACCENT_COLOR)
+        embed.add_field(name="Price", value=f"```fix\n฿ {self.product['price']:.2f}```", inline=True)
         embed.add_field(name="Description", value="Autodelivery 24/7\nInstant Role", inline=True)
         embed.set_footer(text="Please confirm your selection below")
         
-        await interaction.response.send_message(embed=embed, view=ProductConfirmView(selected, interaction.user.id), ephemeral=True)
+        await interaction.response.send_message(embed=embed, view=ProductConfirmView(self.product, interaction.user.id), ephemeral=True)
 
-class ProductBrowserView(discord.ui.View):
+class ProductGridBrowser(discord.ui.View):
     def __init__(self, products, page=0):
         super().__init__(timeout=None)
-        self.add_item(ProductSelect(products, page))
+        self.products = products
+        self.page = page
+        
+        # 1 Page = 20 Items (4 Rows x 5 Columns) 
+        # Row 5 is reserved for Navigation
+        items_per_page = 20 
+        start = page * items_per_page
+        end = start + items_per_page
+        current_items = products[start:end]
+
+        # Add Product Buttons (Grid 5x4)
+        for prod in current_items:
+            self.add_item(ProductButton(prod))
+
+        # Add Navigation Buttons (Row 5)
+        if page > 0:
+            self.add_item(self.create_nav_button("⬅️ Prev", "prev_page", discord.ButtonStyle.primary))
+        
+        # Page Indicator (Fake Button)
+        total_pages = (len(products) - 1) // items_per_page + 1
+        self.add_item(self.create_nav_button(f"{page + 1}/{total_pages}", "info", discord.ButtonStyle.gray, disabled=True))
+
+        if end < len(products):
+            self.add_item(self.create_nav_button("Next ➡️", "next_page", discord.ButtonStyle.primary))
+
+    def create_nav_button(self, label, cid, style, disabled=False):
+        btn = discord.ui.Button(label=label, custom_id=cid, style=style, disabled=disabled, row=4)
+        btn.callback = self.nav_callback
+        return btn
+
+    async def nav_callback(self, interaction: discord.Interaction):
+        custom_id = interaction.data['custom_id']
+        if custom_id == "next_page":
+            await interaction.response.edit_message(view=ProductGridBrowser(self.products, self.page + 1))
+        elif custom_id == "prev_page":
+            await interaction.response.edit_message(view=ProductGridBrowser(self.products, self.page - 1))
 
 # --- MAIN DASHBOARD ---
 
@@ -377,9 +385,10 @@ class MainShopView(discord.ui.View):
 
     @discord.ui.button(label="BROWSE PRODUCTS", style=discord.ButtonStyle.primary, emoji="🛒", custom_id="browse_btn", row=0)
     async def browse(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # เปลี่ยนเป็น Grid View
         await interaction.response.send_message(
-            embed=discord.Embed(description="📂 **Opening Product Catalog...**", color=THEME_COLOR),
-            view=ProductBrowserView(PRODUCTS), 
+            embed=discord.Embed(description="📂 **Select a product below:**", color=THEME_COLOR),
+            view=ProductGridBrowser(PRODUCTS), 
             ephemeral=True
         )
 
