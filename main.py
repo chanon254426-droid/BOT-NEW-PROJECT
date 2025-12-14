@@ -51,26 +51,31 @@ MIN_AMOUNT = 1.00
 PRODUCTS = [
     {"id": "item1",  "emoji": "⭐",  "name": "𝙳𝙾𝙽𝙰𝚃𝙴",         "price": 89,  "role_id": 1431279741440364625},
     {"id": "item2",  "emoji": "👻",  "name": "ᴍᴏᴅ ᴅᴇᴠᴏᴜʀ",      "price": 120, "role_id": 1432064283767738571},
-    {"id": "item3",  "emoji": "👑",  "name": "SETTING PREMIUM", "price": 169, "role_id": 1419373724653588540},
-    {"id": "item4",  "emoji": "⚔️",  "name": "𝙰𝙻𝙻 𝚆𝙴𝙰𝙿𝙾𝙽",       "price": 139, "role_id": 1444190694674792592},
-    {"id": "item5",  "emoji": "💻",  "name": "ลบประวัติ CMD",     "price": 79,  "role_id": 1444191270372114552},
+    {"id": "item3",  "emoji": "👑",  "name": "[CMD] SETTING PREMIUM", "price": 169, "role_id": 1419373724653588540},
+    {"id": "item4",  "emoji": "⚔️",  "name": "[CMD] 𝙰𝙻𝙻 𝚆𝙴𝙰𝙿𝙾𝙽",       "price": 139, "role_id": 1444190694674792592},
+    {"id": "item5",  "emoji": "💻",  "name": "[CMD] ลบประวัติ CMD",     "price": 79,  "role_id": 1444191270372114552},
     {"id": "item6",  "emoji": "🗑️",  "name": "ลบประวัติรันโปรแกรม","price": 49,  "role_id": 1444191566838370365},
-    {"id": "item7",  "emoji": "💎",  "name": "𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟷",      "price": 25,  "role_id": 1431250097135419505},
-    {"id": "item8",  "emoji": "🌈",  "name": "𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟸",      "price": 25,  "role_id": 1431234346202959973},
-    {"id": "item9",  "emoji": "🔥",  "name": "𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟹",      "price": 25,  "role_id": 1431249584054734929},
-    {"id": "item10", "emoji": "🎧",  "name": "𝚜𝚞𝚗𝚔𝚒𝚜𝚜𝚎𝚍",       "price": 25,  "role_id": 1431278653760737340},
-    {"id": "item11", "emoji": "🌃",  "name": "𝚖𝚊𝚐𝚒𝚌𝚎𝚢𝚎",        "price": 25,  "role_id": 1431231640058990652},
-    {"id": "item12", "emoji": "🌷",  "name": "𝚁𝚎𝚊𝚕𝚕𝚒𝚟𝚎",        "price": 25,  "role_id": 1431204938373140513},
-    {"id": "item13", "emoji": "🏞️",  "name": "ꜰᴀʟʟɪɴɢ",         "price": 25,  "role_id": 1444192569754910770},
-    {"id": "item14", "emoji": "🎀",  "name": "realistic𝚅4",         "price": 35,  "role_id": 1448142438131699722},
-    {"id": "item15", "emoji": "🌌",  "name": "realistic𝚅5",         "price": 35,  "role_id": 1448171343022526574},
-    {"id": "item16", "emoji": "🍀",  "name": "realistic𝚅6",         "price": 35,  "role_id": 1448171385942966392},
+    {"id": "item7",  "emoji": "💎",  "name": "[Reshade] 𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟷",      "price": 25,  "role_id": 1431250097135419505},
+    {"id": "item8",  "emoji": "🌈",  "name": "[Reshade] 𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟸",      "price": 25,  "role_id": 1431234346202959973},
+    {"id": "item9",  "emoji": "🔥",  "name": "[Reshade] 𝚛𝚎𝚊𝚕𝚒𝚜𝚝𝚒𝚌𝚅𝟹",      "price": 25,  "role_id": 1431249584054734929},
+    {"id": "item10", "emoji": "🎧",  "name": "[Reshade] 𝚜𝚞𝚗𝚔𝚒𝚜𝚜𝚎𝚍",       "price": 25,  "role_id": 1431278653760737340},
+    {"id": "item11", "emoji": "🌃",  "name": "[Reshade] 𝚖𝚊𝚐𝚒𝚌𝚎𝚢𝚎",        "price": 25,  "role_id": 1431231640058990652},
+    {"id": "item12", "emoji": "🌷",  "name": "[Reshade] 𝚁𝚎𝚊𝚕𝚕𝚒𝚟𝚎",        "price": 25,  "role_id": 1431204938373140513},
+    {"id": "item13", "emoji": "🏞️",  "name": "[Reshade] ꜰᴀʟʟɪɴɢ",         "price": 25,  "role_id": 1444192569754910770},
+    {"id": "item14", "emoji": "🎀",  "name": "[Reshade] realistic𝚅4",         "price": 35,  "role_id": 1448142438131699722},
+    {"id": "item15", "emoji": "🌌",  "name": "[Reshade] realistic𝚅5",         "price": 35,  "role_id": 1448171343022526574},
+    {"id": "item16", "emoji": "🍀",  "name": "[Reshade] realistic𝚅6",         "price": 35,  "role_id": 1448171385942966392},
     {"id": "item17", "emoji": "🎮",  "name": "𝙱𝙾𝙾𝚂𝚃 𝙵𝙿𝚂",        "price": 99,  "role_id": 1432010188340199504},
     {"id": "item18", "emoji": "🚧",  "name": "TOGYO MOD",        "price": 59,  "role_id": 1448142708286947449},
-    {"id": "item19", "emoji": "⚡",  "name": "X Togyo mod",        "price": 35,  "role_id": 1448217708146589747},
-    {"id": "item20", "emoji": "❓",  "name": "Tonedark❓",        "price": 35,  "role_id": 1448197995701993543},
-    {"id": "item21", "emoji": "🚣",  "name": "realistic𝚅7",        "price": 35,  "role_id": 1448313586915999755},
-    {"id": "item22", "emoji": "🍰",  "name": "PEKKY",        "price": 35,  "role_id": 1448263468355424298},
+    {"id": "item19", "emoji": "⚡",  "name": "[Reshade] X Togyo mod",        "price": 35,  "role_id": 1448217708146589747},
+    {"id": "item20", "emoji": "❓",  "name": "[Reshade] Tonedark❓",        "price": 35,  "role_id": 1448197995701993543},
+    {"id": "item21", "emoji": "🚣",  "name": "[Reshade] realistic𝚅7",        "price": 35,  "role_id": 1448313586915999755},
+    {"id": "item22", "emoji": "🍰",  "name": "[Reshade] PEKKY",        "price": 40,  "role_id": 1448263468355424298},
+    {"id": "item23", "emoji": "🍕",  "name": "[Reshade] Realistic-𝚅8",        "price": 35,  "role_id": 1449643401908584490},
+    {"id": "item24", "emoji": "🚀",  "name": "[CMD] 𝖥𝖱𝖠𝖬𝖤 𝖲𝖸𝖭𝖢",        "price": 120,  "role_id": 1449653924209492098},
+    {"id": "item25", "emoji": "💻",  "name": "[CMD] 𝖱𝖤𝖡𝖮𝖱𝖭𝖪𝖨𝖫𝖫",        "price": 159,  "role_id": 1449657396497743883},
+    {"id": "item26", "emoji": "💻",  "name": "[CMD] 𝟨𝟢 𝟩𝖤𝖳 𝟪𝖠𝖢𝖪",        "price": 159,  "role_id": 1449658031301333153},
+    {"id": "item26", "emoji": "🏆",  "name": "VVIP [ของยกร้าน]🏆",        "price": 599,  "role_id": 1449658582244262041},
 ]
 
 # =================================================================
@@ -541,3 +546,4 @@ async def on_message(message):
 server_on()
 # ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
+
