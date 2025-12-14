@@ -34,6 +34,7 @@ THEME_COLOR = 0x2b2d31
 ACCENT_COLOR = 0x5865F2 
 SUCCESS_COLOR = 0x57F287
 ERROR_COLOR = 0xED4245
+TOPUP_COLOR = 0x00f7ff # สีฟ้าสดใสสำหรับหน้าเติมเงิน
 
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_BANNER_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif' 
@@ -293,17 +294,19 @@ class ProductConfirmView(discord.ui.View):
         
         order_id = str(uuid.uuid4())[:8].upper()
         
+        # 🔥 แก้ไขตรงนี้: เปลี่ยนเป็น Mention ลูกค้า
         embed = discord.Embed(title="✅ TRANSACTION SUCCESSFUL", color=SUCCESS_COLOR)
         embed.description = (
             f"```yaml\n"
             f"RECEIPT ID : #{order_id}\n"
             f"DATE       : {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
-            f"CUSTOMER   : {interaction.user.name}\n"
+            f"CUSTOMER   : {interaction.user.name}\n" # เก็บชื่อไว้ดูใน Code Block
             f"------------------------------\n"
             f"ITEM       : {self.product['name']}\n"
             f"PRICE      : {price:.2f} THB\n"
             f"BALANCE    : {data['balance'] - price:.2f} THB\n"
             f"```"
+            f"👤 **Customer:** <@{interaction.user.id}>" # เพิ่ม Tag ตรงนี้
         )
         embed.set_thumbnail(url=SUCCESS_GIF_URL)
         embed.set_footer(text="Thank you for your purchase", icon_url=interaction.user.display_avatar.url)
@@ -318,11 +321,8 @@ class ProductConfirmView(discord.ui.View):
         if interaction.user.id == self.user_id:
             await interaction.response.edit_message(content="❌ Transaction Cancelled", embed=None, view=None)
 
-# 🔥 ปุ่มสินค้า (Product Button) แบบกว้าง
 class ProductButton(discord.ui.Button):
     def __init__(self, product, row_index):
-        # เคล็ดลับ: ใส่ "อักขระว่าง" (Space) หน้า-หลังชื่อสินค้า เพื่อให้ปุ่มดูกว้างขึ้นเหมือนมี Padding
-        # และตัดชื่อที่ยาวเกิน 25 ตัว (เผื่อไว้)
         name_display = f"⠀{product['name'][:25]}⠀" 
         super().__init__(style=discord.ButtonStyle.secondary, label=name_display, emoji=product['emoji'], row=row_index)
         self.product = product
@@ -333,15 +333,12 @@ class ProductButton(discord.ui.Button):
         embed.add_field(name="Info", value="Auto Role / Fast Delivery", inline=True)
         await interaction.response.send_message(embed=embed, view=ProductConfirmView(self.product, interaction.user.id), ephemeral=True)
 
-# 🔥 GRID BROWSER (2 COLUMNS - WIDE MODE)
 class ProductGridBrowser(discord.ui.View):
     def __init__(self, products, page=0):
         super().__init__(timeout=None)
         self.products = products
         self.page = page
         
-        # ปรับเป็น 2 คอลัมน์ x 4 แถว = 8 ชิ้นต่อหน้า
-        # Layout นี้จะดูโปร่ง สบายตาที่สุด
         COLUMNS = 2
         ROWS = 4
         ITEMS_PER_PAGE = COLUMNS * ROWS 
@@ -350,13 +347,10 @@ class ProductGridBrowser(discord.ui.View):
         end = start + ITEMS_PER_PAGE
         current_items = products[start:end]
 
-        # วนลูปสร้างปุ่ม
         for i, prod in enumerate(current_items):
-            # i // 2 หมายถึงทุกๆ 2 ปุ่มจะขึ้นแถวใหม่
             row_idx = i // COLUMNS 
             self.add_item(ProductButton(prod, row_idx))
 
-        # Navigation (Row 4)
         if page > 0:
             self.add_item(self.create_nav_button("⬅️ Prev", "prev_page", discord.ButtonStyle.primary))
         
@@ -378,16 +372,33 @@ class ProductGridBrowser(discord.ui.View):
         elif custom_id == "prev_page":
             await interaction.response.edit_message(view=ProductGridBrowser(self.products, self.page - 1))
 
-# --- MAIN DASHBOARD ---
+# --- MAIN DASHBOARD (MODERN TOPUP) ---
 
-class TopupModal(discord.ui.Modal, title="💳 TOPUP SYSTEM"):
-    amount = discord.ui.TextInput(label="Enter Amount (THB)", placeholder="Example: 50", min_length=1, max_length=6)
+class TopupModal(discord.ui.Modal, title="💸 TOPUP - เติมเงิน"):
+    amount = discord.ui.TextInput(label="จำนวนเงิน (บาท)", placeholder="เช่น 50, 100", min_length=1, max_length=6)
+    
     async def on_submit(self, interaction: discord.Interaction):
         try: val = float(self.amount.value)
-        except: return await interaction.response.send_message("❌ Invalid Number", ephemeral=True)
-        embed = discord.Embed(title="🧾 PAYMENT INVOICE", color=discord.Color.gold())
-        embed.description = f"**AMOUNT:** `{val:.2f} THB`\n\n**INSTRUCTIONS:**\n1. Scan QR Code\n2. Send Slip to <#{SLIP_CHANNEL_ID}>\n3. Wait 1-5 Seconds"
+        except: return await interaction.response.send_message("❌ กรุณาใส่ตัวเลขเท่านั้น", ephemeral=True)
+        
+        # 🔥 แก้ไขตรงนี้: ปรับหน้าตา Invoice ให้ทันสมัย สดใสขึ้น
+        embed = discord.Embed(
+            title="✨ PAYMENT INVOICE | ใบแจ้งยอด", 
+            color=TOPUP_COLOR  # สีฟ้าสดใส
+        )
+        embed.description = (
+            f"# 💵 ยอดชำระ: `{val:.2f} THB`\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "**📲 ขั้นตอนการชำระเงิน**\n"
+            "> 1. สแกน QR Code ด้านล่าง\n"
+            f"> 2. ส่งรูปสลิปในห้อง <#{SLIP_CHANNEL_ID}>\n"
+            "> 3. รอระบบตรวจสอบ 5-10 วินาที\n"
+            "> 4. ทำการส่งสลีปภายใน 5 นาที\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━"
+        )
         embed.set_image(url=QR_CODE_URL)
+        embed.set_footer(text="ระบบอัตโนมัติ 24 ชม. • Powered by AI", icon_url=interaction.client.user.display_avatar.url)
+        
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 class MainShopView(discord.ui.View):
@@ -395,13 +406,8 @@ class MainShopView(discord.ui.View):
 
     @discord.ui.button(label="BROWSE PRODUCTS", style=discord.ButtonStyle.primary, emoji="🛒", custom_id="browse_btn", row=0)
     async def browse(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # สร้าง Embed "กรอบ" สวยๆ
-        embed = discord.Embed(title="🛍️ PRODUCT CATALOG", color=THEME_COLOR)
-        embed.description = "```Click on the item below to view details or purchase.```"
-        embed.set_footer(text="Select an item from the list below")
-        
         await interaction.response.send_message(
-            embed=embed,
+            embed=discord.Embed(description="📂 **Select a product below:**", color=THEME_COLOR),
             view=ProductGridBrowser(PRODUCTS), 
             ephemeral=True
         )
@@ -455,9 +461,9 @@ async def setup_dashboard(interaction):
 @bot.tree.command(name="setup_shop")
 async def setup_shop(interaction):
     await interaction.response.defer(ephemeral=True)
-    embed = discord.Embed(title="⚡ CYBER STORE SYSTEM", color=THEME_COLOR)
+    embed = discord.Embed(title="⚡ NEW PROJECT!!", color=THEME_COLOR)
     embed.description = (
-        "> **WELCOME TO AUTOMATED STORE**\n"
+        "> **WELCOME TO AUTOMATED NEW PROJECT!!**\n"
         "> `STATUS:` 🟢 **ONLINE**\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         "🛒 **HOW TO BUY**\n"
@@ -496,10 +502,12 @@ async def on_message(message):
                 new_bal = update_money(message.author.id, amount, is_topup=True)
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
+                
                 embed = discord.Embed(title="✅ TOPUP SUCCESSFUL", color=SUCCESS_COLOR)
                 embed.description = f"```ini\n[ RECEIPT ]\nAMOUNT  = {amount:.2f} THB\nBALANCE = {new_bal:.2f} THB\nREF     = {ref}```"
                 embed.set_thumbnail(url=message.author.display_avatar.url)
                 await msg.edit(content=None, embed=embed)
+                
                 if hist := bot.get_channel(HISTORY_CHANNEL_ID):
                     log_embed = discord.Embed(title="🧾 NEW TRANSACTION", color=ACCENT_COLOR)
                     log_embed.description = f"User: {message.author.mention}\nAmount: {amount}\nRef: {ref}"
