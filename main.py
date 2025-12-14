@@ -24,7 +24,7 @@ SHOP_CHANNEL_ID = 1416797606180552714
 SLIP_CHANNEL_ID = 1416797464350167090
 ADMIN_LOG_ID = 1441466742885978144      # ห้อง Log ที่บอทส่งสลิป (ใช้เช็คออเดอร์)
 HISTORY_CHANNEL_ID = 1444390933297631512
-REDEEM_CHANNEL_ID = 123456789012345678  # ⚠️ ใส่ ID ห้องสำหรับกดแลกคีย์ที่นี่
+REDEEM_CHANNEL_ID = 1449749949918089289  # ⚠️ ใส่ ID ห้องสำหรับกดแลกคีย์ที่นี่
 REDEEM_LOG_ID = 1444662604940181667     # ห้อง Log การแลกคีย์ (แจ้งเตือนแอดมิน)
 
 # Dashboard IDs
@@ -721,3 +721,4 @@ def load_db():
 
 server_on()
 bot.run(os.getenv('TOKEN'))
+
