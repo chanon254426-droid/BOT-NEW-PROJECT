@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from myserver import server_on
 
 # =================================================================
-# ⚙️ CONFIGURATION
+# ⚙️ CONFIGURATION (ตั้งค่าระบบ)
 # =================================================================
 
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
@@ -22,8 +22,10 @@ EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
 # Channel IDs
 SHOP_CHANNEL_ID = 1416797606180552714
 SLIP_CHANNEL_ID = 1416797464350167090
-ADMIN_LOG_ID = 1441466742885978144
+ADMIN_LOG_ID = 1441466742885978144      # ห้อง Log ที่บอทส่งสลิป (ใช้เช็คออเดอร์)
 HISTORY_CHANNEL_ID = 1444390933297631512
+REDEEM_CHANNEL_ID = 123456789012345678  # ⚠️ ใส่ ID ห้องสำหรับกดแลกคีย์ที่นี่
+REDEEM_LOG_ID = 1444662604940181667     # ห้อง Log การแลกคีย์ (แจ้งเตือนแอดมิน)
 
 # Dashboard IDs
 DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423
@@ -34,7 +36,8 @@ THEME_COLOR = 0x2b2d31
 ACCENT_COLOR = 0x5865F2 
 SUCCESS_COLOR = 0x57F287
 ERROR_COLOR = 0xED4245
-TOPUP_COLOR = 0x00f7ff # สีฟ้าสดใสสำหรับหน้าเติมเงิน
+TOPUP_COLOR = 0x00f7ff 
+CYBER_COLOR = 0x00f7ff
 
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_BANNER_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif' 
@@ -50,9 +53,18 @@ EXPECTED_NAMES = [
 ]
 MIN_AMOUNT = 1.00
 
+# 🔗 ลิงก์สินค้า (ชื่อสินค้าต้องตรงกับใน PRODUCTS เป๊ะๆ)
+PRODUCT_LINKS = {
+    "[CMD] ลบประวัติ CMD": "https://pastebin.com/raw/kTdr5max",
+    "[CMD] ALL WEAPON": "https://pastebin.com/raw/VPyLYamM",
+    "[CMD] REBORNKILL": "https://pastebin.com/raw/AQap1A0Y",
+    "[CMD] 60 7ET 8ACK": "https://pastebin.com/raw/dStL5MCt",
+    # เพิ่มสินค้าอื่นๆ ตามต้องการ
+}
+
 # สินค้า
 PRODUCTS = [
-    {"id": "item1", "emoji": "🏆",  "name": "VVIP [ยศทั้งร้าน]🏆",        "price": 599,  "role_id": 1449658582244262041},
+    {"id": "item1", "emoji": "🏆",  "name": "VVIP [ยศทั้งร้าน]🏆",         "price": 599,  "role_id": 1449658582244262041},
     {"id": "item2",  "emoji": "⭐",  "name": "DONATE",         "price": 89,  "role_id": 1431279741440364625},
     {"id": "item3", "emoji": "🎮",  "name": "BOOST FPS",         "price": 99,  "role_id": 1432010188340199504},
     {"id": "item4",  "emoji": "👻",  "name": "MODS DEVOUR",       "price": 120, "role_id": 1432064283767738571},
@@ -94,18 +106,21 @@ DB_FILE = "user_balance.json"
 SLIP_DB_FILE = "used_slips.json"
 TOTAL_DB_FILE = "total_topup.json"
 LOG_MSG_DB = "log_messages.json"
+RECEIPT_DB = "used_receipts.json" # เก็บเลขที่ใช้เเล้ว
+KEYS_DB = "distributed_keys.json" # เก็บคีย์ที่บอทจ่ายไปแล้ว
 
 def load_json(filename):
     if not os.path.exists(filename):
-        with open(filename, "w") as f: json.dump({}, f)
-        return {}
+        with open(filename, "w") as f: json.dump([] if "used" in filename or "keys" in filename else {}, f)
+        return [] if "used" in filename or "keys" in filename else {}
     try:
         with open(filename, "r") as f: return json.load(f)
-    except: return {}
+    except: return [] if "used" in filename or "keys" in filename else {}
 
 def save_json(filename, data):
     with open(filename, "w") as f: json.dump(data, f, indent=4)
 
+# --- Shop DB Functions ---
 def get_data(user_id):
     bal_db = load_json(DB_FILE)
     total_db = load_json(TOTAL_DB_FILE)
@@ -142,6 +157,27 @@ def save_used_slip(trans_ref):
     if isinstance(slips, dict): slips = list(slips.keys())
     slips.append(trans_ref)
     with open(SLIP_DB_FILE, "w") as f: json.dump(slips, f, indent=4)
+
+# --- Redeem DB Functions ---
+def is_receipt_used(receipt_id):
+    used = load_json(RECEIPT_DB)
+    return receipt_id in used
+
+def mark_receipt_used(receipt_id):
+    used = load_json(RECEIPT_DB)
+    if receipt_id not in used:
+        used.append(receipt_id)
+        save_json(RECEIPT_DB, used)
+
+def is_key_distributed(key):
+    used = load_json(KEYS_DB)
+    return key in used
+
+def mark_key_distributed(key):
+    used = load_json(KEYS_DB)
+    if key not in used:
+        used.append(key)
+        save_json(KEYS_DB, used)
 
 # =================================================================
 # ⚙️ SYSTEM FUNCTIONS
@@ -227,8 +263,54 @@ def check_slip_easyslip(image_url):
         else: return False, 0, None, data.get('message', 'Check Failed')
     except Exception as e: return False, 0, None, f"Error: {str(e)}"
 
+# --- REDEEM LOGIC ---
+def fetch_available_key(pastebin_url):
+    """ ดึงคีย์จาก Pastebin และหาคีย์ที่ยังว่าง """
+    try:
+        response = requests.get(pastebin_url)
+        if response.status_code != 200: return None, "Link Error"
+        
+        lines = response.text.splitlines()
+        for line in lines:
+            line = line.strip()
+            if not line: continue
+            
+            # แยก Key กับ HWID ด้วยเครื่องหมายลูกน้ำ (,)
+            parts = line.split(',')
+            if len(parts) >= 1:
+                key = parts[0].strip()
+                hwid = parts[1].strip() if len(parts) > 1 else ""
+                
+                # ถ้า HWID ว่าง และ คีย์ยังไม่ถูกบอทจ่ายไป -> ใช้ได้
+                if hwid == "" and not is_key_distributed(key):
+                    return key, "OK"
+                    
+        return None, "No Keys Left" 
+    except Exception as e:
+        return None, str(e)
+
+async def verify_receipt(bot, receipt_id):
+    """ ตรวจสอบว่ามี Receipt ID นี้จริงไหมในห้อง Log """
+    log_channel = bot.get_channel(ADMIN_LOG_ID) # ใช้ห้อง Log เดียวกับร้านค้า
+    if not log_channel: return False, None, "Log Channel Not Found"
+
+    async for message in log_channel.history(limit=300): # หา 300 ข้อความล่าสุด
+        if not message.embeds: continue
+        embed = message.embeds[0]
+        content = str(embed.description) + str(embed.footer.text if embed.footer else "")
+        
+        clean_input_id = receipt_id.replace("#", "").strip()
+        if clean_input_id in content:
+            # ดึงชื่อสินค้าออกมาจาก ITEM : ...
+            item_match = re.search(r"ITEM\s*:\s*(.+)", content)
+            if item_match:
+                product_name = item_match.group(1).strip()
+                product_name = product_name.replace("`", "") 
+                return True, product_name, "Found"
+    return False, None, "Receipt Not Found"
+
 # =================================================================
-# 🎨 UI SYSTEM (2 COLUMNS - WIDE & CLEAN)
+# 🎨 UI SYSTEM
 # =================================================================
 
 class DashboardView(discord.ui.View):
@@ -273,7 +355,7 @@ async def update_all_user_logs(bot):
         await update_user_log(bot, uid)
         await asyncio.sleep(0.5)
 
-# --- SHOPPING LOGIC ---
+# --- SHOPPING UI ---
 
 class ProductConfirmView(discord.ui.View):
     def __init__(self, product, user_id):
@@ -300,19 +382,18 @@ class ProductConfirmView(discord.ui.View):
         
         order_id = str(uuid.uuid4())[:8].upper()
         
-        # 🔥 แก้ไขตรงนี้: เปลี่ยนเป็น Mention ลูกค้า
         embed = discord.Embed(title="✅ TRANSACTION SUCCESSFUL", color=SUCCESS_COLOR)
         embed.description = (
             f"```yaml\n"
             f"RECEIPT ID : #{order_id}\n"
             f"DATE       : {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
-            f"CUSTOMER   : {interaction.user.name}\n" # เก็บชื่อไว้ดูใน Code Block
+            f"CUSTOMER   : {interaction.user.name}\n"
             f"------------------------------\n"
             f"ITEM       : {self.product['name']}\n"
             f"PRICE      : {price:.2f} THB\n"
             f"BALANCE    : {data['balance'] - price:.2f} THB\n"
             f"```"
-            f"👤 **Customer:** <@{interaction.user.id}>" # เพิ่ม Tag ตรงนี้
+            f"👤 **Customer:** <@{interaction.user.id}>"
         )
         embed.set_thumbnail(url=SUCCESS_GIF_URL)
         embed.set_footer(text="Thank you for your purchase", icon_url=interaction.user.display_avatar.url)
@@ -378,20 +459,102 @@ class ProductGridBrowser(discord.ui.View):
         elif custom_id == "prev_page":
             await interaction.response.edit_message(view=ProductGridBrowser(self.products, self.page - 1))
 
-# --- MAIN DASHBOARD (MODERN TOPUP) ---
+# --- REDEEM UI ---
+
+class RedeemModal(discord.ui.Modal, title="🔐 REDEEM LICENSE KEY"):
+    receipt_id = discord.ui.TextInput(
+        label="RECEIPT ID (ดูในสลิปที่บอทส่งให้)", 
+        placeholder="เช่น #5B058D5F", 
+        min_length=5, 
+        max_length=20
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        rid = self.receipt_id.value.strip().upper()
+        clean_rid = rid.replace("#", "")
+
+        # 1. เช็ค Local DB
+        if is_receipt_used(clean_rid):
+            await interaction.followup.send(f"❌ **ERROR:** ออเดอร์นี้ `{rid}` ถูกใช้งานไปแล้ว!", ephemeral=True)
+            return
+
+        # 2. เช็ค Log
+        found, product_name, msg = await verify_receipt(interaction.client, clean_rid)
+        if not found:
+            await interaction.followup.send(f"❌ **ERROR:** ไม่พบเลข Order `{rid}` ในระบบ\nโปรดตรวจสอบความถูกต้อง หรือรอระบบอัปเดตสักครู่", ephemeral=True)
+            return
+
+        # 3. เช็คลิงก์ Pastebin
+        pastebin_url = PRODUCT_LINKS.get(product_name)
+        if not pastebin_url:
+            await interaction.followup.send(f"⚠️ สินค้า `{product_name}` ไม่ใช่สินค้าประเภท Key หรือยังไม่ได้ลงทะเบียน", ephemeral=True)
+            return
+
+        # 4. ดึงคีย์
+        key, status = fetch_available_key(pastebin_url)
+        if not key:
+            await interaction.followup.send(f"😭 **ขออภัย:** สินค้า `{product_name}` คีย์หมดชั่วคราว\nโปรดติดต่อแอดมินเพื่อเติมของ", ephemeral=True)
+            if log := interaction.guild.get_channel(REDEEM_LOG_ID):
+                await log.send(f"⚠️ **OUT OF STOCK ALERT:** {product_name} (User tried to redeem)")
+            return
+
+        # ✅ สำเร็จ
+        mark_receipt_used(clean_rid)
+        mark_key_distributed(key)
+
+        try:
+            dm_embed = discord.Embed(title="📦 PRODUCT DELIVERY", color=SUCCESS_COLOR)
+            dm_embed.description = (
+                f"**PRODUCT:** `{product_name}`\n"
+                f"**ORDER ID:** `#{clean_rid}`\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🔑 **YOUR KEY:**\n```\n{key}\n```\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "⚠️ *คีย์นี้ถูกล็อคกับออเดอร์ของคุณแล้ว ห้ามทำหาย*"
+            )
+            dm_embed.set_footer(text="Thank you for your support!")
+            await interaction.user.send(embed=dm_embed)
+            dm_status = "✅ Sent via DM"
+        except:
+            dm_status = "❌ DM Closed (Sent here)"
+        
+        success_embed = discord.Embed(title="✅ REDEEM SUCCESSFUL", color=SUCCESS_COLOR)
+        success_embed.description = f"รับคีย์สำหรับ **{product_name}** สำเร็จ!\n(ตรวจสอบใน DM ของคุณ)"
+        if "Closed" in dm_status:
+            success_embed.description += f"\n\n🔑 **YOUR KEY:**\n```{key}```"
+        
+        await interaction.followup.send(embed=success_embed, ephemeral=True)
+
+        if log_channel := interaction.guild.get_channel(REDEEM_LOG_ID):
+            log_embed = discord.Embed(title="🔐 KEY REDEEMED LOG", color=CYBER_COLOR)
+            log_embed.description = (
+                f"```ini\n"
+                f"[ REDEEM TRANSACTION ]\n"
+                f"USER     = {interaction.user.name} ({interaction.user.id})\n"
+                f"ORDER    = #{clean_rid}\n"
+                f"PRODUCT  = {product_name}\n"
+                f"KEY      = {key}\n"
+                f"TIME     = {datetime.now().strftime('%H:%M:%S')}\n"
+                f"```"
+            )
+            log_embed.set_thumbnail(url=interaction.user.display_avatar.url)
+            await log_channel.send(embed=log_embed)
+
+class RedeemView(discord.ui.View):
+    def __init__(self): super().__init__(timeout=None)
+    @discord.ui.button(label="กดเพื่อรับคีย์ (REDEEM KEY)", style=discord.ButtonStyle.primary, emoji="🎁", custom_id="redeem_btn")
+    async def redeem(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(RedeemModal())
+
+# --- MAIN DASHBOARD ---
 
 class TopupModal(discord.ui.Modal, title="💸 TOPUP - เติมเงิน"):
     amount = discord.ui.TextInput(label="จำนวนเงิน (บาท)", placeholder="เช่น 50, 100", min_length=1, max_length=6)
-    
     async def on_submit(self, interaction: discord.Interaction):
         try: val = float(self.amount.value)
         except: return await interaction.response.send_message("❌ กรุณาใส่ตัวเลขเท่านั้น", ephemeral=True)
-        
-        # 🔥 แก้ไขตรงนี้: ปรับหน้าตา Invoice ให้ทันสมัย สดใสขึ้น
-        embed = discord.Embed(
-            title="✨ PAYMENT INVOICE | ใบแจ้งยอด", 
-            color=TOPUP_COLOR  # สีฟ้าสดใส
-        )
+        embed = discord.Embed(title="✨ PAYMENT INVOICE | ใบแจ้งยอด", color=TOPUP_COLOR)
         embed.description = (
             f"# 💵 ยอดชำระ: `{val:.2f} THB`\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -404,7 +567,6 @@ class TopupModal(discord.ui.Modal, title="💸 TOPUP - เติมเงิน"
         )
         embed.set_image(url=QR_CODE_URL)
         embed.set_footer(text="ระบบอัตโนมัติ 24 ชม. • Powered by AI", icon_url=interaction.client.user.display_avatar.url)
-        
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 class MainShopView(discord.ui.View):
@@ -452,6 +614,7 @@ async def on_ready():
     load_db()
     bot.add_view(MainShopView())
     bot.add_view(DashboardView())
+    bot.add_view(RedeemView())
     try: await bot.tree.sync()
     except: pass
 
@@ -485,6 +648,28 @@ async def setup_shop(interaction):
     await interaction.channel.send(embed=embed, view=MainShopView())
     await interaction.followup.send("✅ Shop Interface Deployed!", ephemeral=True)
 
+@bot.tree.command(name="setup_redeem", description="[Admin] Create Redeem Key Panel")
+@app_commands.default_permissions(administrator=True)
+async def setup_redeem(interaction):
+    if interaction.channel_id != REDEEM_CHANNEL_ID:
+        return await interaction.response.send_message("❌ ผิดห้อง", ephemeral=True)
+    embed = discord.Embed(title="🔐 REDEEM CENTER", color=0xff0055) 
+    embed.description = (
+        "# 📥 ระบบรับสินค้าอัตโนมัติ\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "**วิธีใช้งาน:**\n"
+        "1. นำเลข **RECEIPT ID** (เช่น `#BA55901A`) จากสลิปที่บอทส่งให้\n"
+        "2. กดปุ่ม **`🎁 กดเพื่อรับคีย์`** ด้านล่าง\n"
+        "3. กรอกเลข Order ลงในช่องแล้วกดส่ง\n"
+        "4. บอทจะส่ง Key ให้ทางแชทส่วนตัว (DM)\n\n"
+        "⚠️ **เงื่อนไข:**\n"
+        "*1 ออเดอร์ รับได้ 1 ครั้งเท่านั้น*\n"
+        "*หากพบปัญหาโปรดเปิดตั๋วติดต่อแอดมิน*"
+    )
+    embed.set_image(url="https://media.discordapp.net/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif")
+    await interaction.channel.send(embed=embed, view=RedeemView())
+    await interaction.response.send_message("✅ Redeem Panel Created", ephemeral=True)
+
 @bot.tree.command(name="add_money")
 async def add_money(interaction, user: discord.Member, amount: float):
     new_bal = update_money(user.id, amount, is_topup=True)
@@ -508,12 +693,10 @@ async def on_message(message):
                 new_bal = update_money(message.author.id, amount, is_topup=True)
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
-                
                 embed = discord.Embed(title="✅ TOPUP SUCCESSFUL", color=SUCCESS_COLOR)
                 embed.description = f"```ini\n[ RECEIPT ]\nAMOUNT  = {amount:.2f} THB\nBALANCE = {new_bal:.2f} THB\nREF     = {ref}```"
                 embed.set_thumbnail(url=message.author.display_avatar.url)
                 await msg.edit(content=None, embed=embed)
-                
                 if hist := bot.get_channel(HISTORY_CHANNEL_ID):
                     log_embed = discord.Embed(title="🧾 NEW TRANSACTION", color=ACCENT_COLOR)
                     log_embed.description = f"User: {message.author.mention}\nAmount: {amount}\nRef: {ref}"
@@ -533,7 +716,8 @@ async def on_message(message):
 def load_db():
     load_json(DB_FILE); load_json(SLIP_DB_FILE)
     load_json(TOTAL_DB_FILE); load_json(LOG_MSG_DB)
+    # เพิ่ม DB ของระบบ Redeem
+    load_json(RECEIPT_DB); load_json(KEYS_DB)
 
 server_on()
 bot.run(os.getenv('TOKEN'))
-
