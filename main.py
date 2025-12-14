@@ -221,7 +221,7 @@ def check_slip_easyslip(image_url):
     except Exception as e: return False, 0, None, f"Error: {str(e)}"
 
 # =================================================================
-# 🎨 UI SYSTEM (CLEAN GRID 4x4)
+# 🎨 UI SYSTEM (GRID 3 COLUMNS - CLEAN LAYOUT)
 # =================================================================
 
 class DashboardView(discord.ui.View):
@@ -318,11 +318,11 @@ class ProductConfirmView(discord.ui.View):
         if interaction.user.id == self.user_id:
             await interaction.response.edit_message(content="❌ Transaction Cancelled", embed=None, view=None)
 
-# 🔥 ปุ่มสินค้า (บังคับ Row เพื่อความระเบียบ)
+# 🔥 ปุ่มสินค้า (Product Button)
 class ProductButton(discord.ui.Button):
     def __init__(self, product, row_index):
-        # ตัดชื่อให้สั้นลงเหลือ 15 ตัวอักษร เพื่อให้ปุ่มขนาดเท่าๆ กัน
-        super().__init__(style=discord.ButtonStyle.secondary, label=product['name'][:15], emoji=product['emoji'], row=row_index)
+        # เพิ่มจำนวนตัวอักษรเป็น 20 ได้ เพราะเราเหลือแค่ 3 ปุ่มต่อแถว
+        super().__init__(style=discord.ButtonStyle.secondary, label=product['name'][:20], emoji=product['emoji'], row=row_index)
         self.product = product
 
     async def callback(self, interaction: discord.Interaction):
@@ -331,37 +331,41 @@ class ProductButton(discord.ui.Button):
         embed.add_field(name="Info", value="Auto Role / Fast Delivery", inline=True)
         await interaction.response.send_message(embed=embed, view=ProductConfirmView(self.product, interaction.user.id), ephemeral=True)
 
-# 🔥 จัดหน้าต่างเป็น Grid 4x4 (16 Items/Page)
+# 🔥 GRID BROWSER (3 COLUMNS)
 class ProductGridBrowser(discord.ui.View):
     def __init__(self, products, page=0):
         super().__init__(timeout=None)
         self.products = products
         self.page = page
         
-        # ปรับเหลือ 16 ชิ้นต่อหน้า (4 แถว x 4 คอลัมน์)
-        items_per_page = 16 
-        start = page * items_per_page
-        end = start + items_per_page
+        # ปรับเป็น 3 คอลัมน์ x 4 แถว = 12 ชิ้นต่อหน้า
+        # ทำให้มีพื้นที่ด้านข้างเยอะขึ้นสำหรับชื่อยาวๆ
+        COLUMNS = 3
+        ROWS = 4
+        ITEMS_PER_PAGE = COLUMNS * ROWS 
+        
+        start = page * ITEMS_PER_PAGE
+        end = start + ITEMS_PER_PAGE
         current_items = products[start:end]
 
-        # วนลูปใส่ปุ่ม พร้อมระบุบรรทัด (row) ชัดเจน
+        # วนลูปสร้างปุ่มแบบ Grid
         for i, prod in enumerate(current_items):
-            # i // 4 หมายถึง ทุกๆ 4 ปุ่ม ให้ขึ้นแถวใหม่ (จะได้ 0, 1, 2, 3)
-            row_idx = i // 4 
+            # i // 3 หมายถึงทุกๆ 3 ปุ่มจะขึ้นแถวใหม่ (0, 0, 0 -> 1, 1, 1)
+            row_idx = i // COLUMNS 
             self.add_item(ProductButton(prod, row_idx))
 
-        # ปุ่มเปลี่ยนหน้า (Navigation) ใส่ไว้แถวที่ 4 (Row 4)
+        # Navigation (Row 4)
         if page > 0:
             self.add_item(self.create_nav_button("⬅️ Prev", "prev_page", discord.ButtonStyle.primary))
         
-        total_pages = (len(products) - 1) // items_per_page + 1
+        total_pages = (len(products) - 1) // ITEMS_PER_PAGE + 1
         self.add_item(self.create_nav_button(f"Page {page + 1}/{total_pages}", "info", discord.ButtonStyle.gray, disabled=True))
 
         if end < len(products):
             self.add_item(self.create_nav_button("Next ➡️", "next_page", discord.ButtonStyle.primary))
 
     def create_nav_button(self, label, cid, style, disabled=False):
-        # บังคับปุ่มเปลี่ยนหน้าให้อยู่แถวสุดท้ายเสมอ (row=4)
+        # ปุ่มเปลี่ยนหน้าอยู่แถวที่ 5 (index 4) เสมอ
         btn = discord.ui.Button(label=label, custom_id=cid, style=style, disabled=disabled, row=4)
         btn.callback = self.nav_callback
         return btn
@@ -390,8 +394,13 @@ class MainShopView(discord.ui.View):
 
     @discord.ui.button(label="BROWSE PRODUCTS", style=discord.ButtonStyle.primary, emoji="🛒", custom_id="browse_btn", row=0)
     async def browse(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # สร้าง Embed "กรอบ" สวยๆ
+        embed = discord.Embed(title="🛍️ PRODUCT CATALOG", color=THEME_COLOR)
+        embed.description = "```Click on the item below to view details or purchase.```"
+        embed.set_footer(text="Select an item from the list below")
+        
         await interaction.response.send_message(
-            embed=discord.Embed(description="📂 **Select a product below:**", color=THEME_COLOR),
+            embed=embed,
             view=ProductGridBrowser(PRODUCTS), 
             ephemeral=True
         )
@@ -405,9 +414,9 @@ class MainShopView(discord.ui.View):
         data = get_data(interaction.user.id)
         total = data['total']
         rank = "MEMBER"
-        if total > 500: rank = "DIAMOND 💎"
-        elif total > 150: rank = "GOLD 🏆"
-        elif total > 50: rank = "SILVER 🥈"
+        if total > 5000: rank = "DIAMOND 💎"
+        elif total > 1000: rank = "GOLD 🏆"
+        elif total > 500: rank = "SILVER 🥈"
         embed = discord.Embed(title="💳 MEMBER CARD", color=THEME_COLOR)
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="OWNER", value=f"{interaction.user.mention}", inline=True)
