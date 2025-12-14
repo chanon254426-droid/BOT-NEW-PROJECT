@@ -414,9 +414,9 @@ class MainShopView(discord.ui.View):
         data = get_data(interaction.user.id)
         total = data['total']
         rank = "MEMBER"
-        if total > 5000: rank = "DIAMOND 💎"
-        elif total > 1000: rank = "GOLD 🏆"
-        elif total > 500: rank = "SILVER 🥈"
+        if total > 500: rank = "DIAMOND 💎"
+        elif total > 100: rank = "GOLD 🏆"
+        elif total > 50: rank = "SILVER 🥈"
         embed = discord.Embed(title="💳 MEMBER CARD", color=THEME_COLOR)
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="OWNER", value=f"{interaction.user.mention}", inline=True)
