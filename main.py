@@ -221,7 +221,7 @@ def check_slip_easyslip(image_url):
     except Exception as e: return False, 0, None, f"Error: {str(e)}"
 
 # =================================================================
-# 🎨 UI SYSTEM (GRID 3 COLUMNS - CLEAN LAYOUT)
+# 🎨 UI SYSTEM (2 COLUMNS - WIDE & CLEAN)
 # =================================================================
 
 class DashboardView(discord.ui.View):
@@ -318,11 +318,13 @@ class ProductConfirmView(discord.ui.View):
         if interaction.user.id == self.user_id:
             await interaction.response.edit_message(content="❌ Transaction Cancelled", embed=None, view=None)
 
-# 🔥 ปุ่มสินค้า (Product Button)
+# 🔥 ปุ่มสินค้า (Product Button) แบบกว้าง
 class ProductButton(discord.ui.Button):
     def __init__(self, product, row_index):
-        # เพิ่มจำนวนตัวอักษรเป็น 20 ได้ เพราะเราเหลือแค่ 3 ปุ่มต่อแถว
-        super().__init__(style=discord.ButtonStyle.secondary, label=product['name'][:20], emoji=product['emoji'], row=row_index)
+        # เคล็ดลับ: ใส่ "อักขระว่าง" (Space) หน้า-หลังชื่อสินค้า เพื่อให้ปุ่มดูกว้างขึ้นเหมือนมี Padding
+        # และตัดชื่อที่ยาวเกิน 25 ตัว (เผื่อไว้)
+        name_display = f"⠀{product['name'][:25]}⠀" 
+        super().__init__(style=discord.ButtonStyle.secondary, label=name_display, emoji=product['emoji'], row=row_index)
         self.product = product
 
     async def callback(self, interaction: discord.Interaction):
@@ -331,16 +333,16 @@ class ProductButton(discord.ui.Button):
         embed.add_field(name="Info", value="Auto Role / Fast Delivery", inline=True)
         await interaction.response.send_message(embed=embed, view=ProductConfirmView(self.product, interaction.user.id), ephemeral=True)
 
-# 🔥 GRID BROWSER (3 COLUMNS)
+# 🔥 GRID BROWSER (2 COLUMNS - WIDE MODE)
 class ProductGridBrowser(discord.ui.View):
     def __init__(self, products, page=0):
         super().__init__(timeout=None)
         self.products = products
         self.page = page
         
-        # ปรับเป็น 3 คอลัมน์ x 4 แถว = 12 ชิ้นต่อหน้า
-        # ทำให้มีพื้นที่ด้านข้างเยอะขึ้นสำหรับชื่อยาวๆ
-        COLUMNS = 3
+        # ปรับเป็น 2 คอลัมน์ x 4 แถว = 8 ชิ้นต่อหน้า
+        # Layout นี้จะดูโปร่ง สบายตาที่สุด
+        COLUMNS = 2
         ROWS = 4
         ITEMS_PER_PAGE = COLUMNS * ROWS 
         
@@ -348,9 +350,9 @@ class ProductGridBrowser(discord.ui.View):
         end = start + ITEMS_PER_PAGE
         current_items = products[start:end]
 
-        # วนลูปสร้างปุ่มแบบ Grid
+        # วนลูปสร้างปุ่ม
         for i, prod in enumerate(current_items):
-            # i // 3 หมายถึงทุกๆ 3 ปุ่มจะขึ้นแถวใหม่ (0, 0, 0 -> 1, 1, 1)
+            # i // 2 หมายถึงทุกๆ 2 ปุ่มจะขึ้นแถวใหม่
             row_idx = i // COLUMNS 
             self.add_item(ProductButton(prod, row_idx))
 
@@ -365,7 +367,6 @@ class ProductGridBrowser(discord.ui.View):
             self.add_item(self.create_nav_button("Next ➡️", "next_page", discord.ButtonStyle.primary))
 
     def create_nav_button(self, label, cid, style, disabled=False):
-        # ปุ่มเปลี่ยนหน้าอยู่แถวที่ 5 (index 4) เสมอ
         btn = discord.ui.Button(label=label, custom_id=cid, style=style, disabled=disabled, row=4)
         btn.callback = self.nav_callback
         return btn
