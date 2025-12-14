@@ -74,8 +74,6 @@ PRODUCTS = [
     {"id": "item23", "emoji": "🍕",  "name": "[Reshade] Realistic-𝚅8",        "price": 35,  "role_id": 1449643401908584490},
     {"id": "item24", "emoji": "🚀",  "name": "[CMD] 𝖥𝖱𝖠𝖬𝖤 𝖲𝖸𝖭𝖢",        "price": 120,  "role_id": 1449653924209492098},
     {"id": "item25", "emoji": "💻",  "name": "[CMD] 𝖱𝖤𝖡𝖮𝖱𝖭𝖪𝖨𝖫𝖫",        "price": 159,  "role_id": 1449657396497743883},
-    {"id": "item26", "emoji": "💻",  "name": "[CMD] 𝟨𝟢 𝟩𝖤𝖳 𝟪𝖠𝖢𝖪",        "price": 159,  "role_id": 1449658031301333153},
-    {"id": "item26", "emoji": "🏆",  "name": "VVIP [ของยกร้าน]🏆",        "price": 599,  "role_id": 1449658582244262041},
 ]
 
 # =================================================================
@@ -462,50 +460,24 @@ async def setup_dashboard(interaction):
 
 @bot.tree.command(name="setup_shop")
 async def setup_shop(interaction):
-    # 1. บอก Discord ว่าได้รับคำสั่งแล้ว (ขึ้น "กำลังคิด...")
     await interaction.response.defer(ephemeral=True)
-    
-    try:
-        # เตรียมข้อความ
-        description_text = (
-            "ยินดีต้อนรับสู่ **💻 NEW PROJECT!** ระบบอัตโนมัติ 24 ชม.\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "📜 **ขั้นตอนการสั่งซื้อสินค้า**\n"
-            "1️⃣ กดปุ่ม **`เติมเงิน (QR Code)`** ระบบจะให้กรอกจำนวนเงิน\n"
-            "2️⃣ กดปุ่ม **`เช็คยอดเงิน`** เพื่อตรวจสอบความถูกต้อง\n"
-            "3️⃣ เลือกสินค้าที่ต้องการจาก **`เมนูด้านล่าง`** เพื่อสั่งซื้อทันที\n\n"
-            "⚠️ **ข้อตกลงและเงื่อนไข**\n"
-            "• โปรดตรวจสอบยอดเงินให้เพียงพอก่อนกดสั่งซื้อ\n"
-            "• สินค้าซื้อแล้วไม่รับเปลี่ยนหรือคืนเงินทุกกรณี\n"
-            "• หากพบปัญหาติดต่อแอดมินผ่านการเปิดตั๋วเท่านั้น\n\n"
-            "🛒 **เลือกสินค้าที่คุณต้องการได้เลย!** 👇"
-        )
-        
-        embed_shop = discord.Embed(
-            title="✨ 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 𝐒𝐇𝐎𝐏 ✨", 
-            description=description_text, 
-            color=discord.Color.from_rgb(47, 49, 54)
-        )
-        
-        if SHOP_GIF_URL.startswith("http"): 
-            embed_shop.set_image(url=SHOP_GIF_URL)
-
-        # 2. พยายามส่งข้อความเข้าร้าน (จุดที่มักจะ Error)
-        await interaction.channel.send(embed=embed_shop, view=MainShopView())
-        
-        # 3. แจ้งเตือนคนกดว่าเสร็จแล้ว
-        await interaction.followup.send("✅ สร้างหน้าร้านค้าเรียบร้อย!", ephemeral=True)
-
-    except discord.Forbidden:
-        # กรณีบอทไม่มีสิทธิ์พิมพ์ในห้องนั้น
-        await interaction.followup.send(
-            "❌ **บอทไม่มีสิทธิ์พิมพ์ในห้องนี้!**\nรบกวนเช็ค Permission: `Send Messages`, `Embed Links`, `Attach Files` ในการตั้งค่าห้อง", 
-            ephemeral=True
-        )
-    except Exception as e:
-        # กรณี Error อื่นๆ จะได้รู้ว่าพังตรงไหน
-        traceback.print_exc() # ปริ้นลง Console ด้วย
-        await interaction.followup.send(f"❌ **เกิดข้อผิดพลาด:** `{e}`", ephemeral=True)
+    description_text = (
+        "ยินดีต้อนรับสู่ **💻 NEW PROJECT!** ระบบอัตโนมัติ 24 ชม.\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📜 **ขั้นตอนการสั่งซื้อสินค้า**\n"
+        "1️⃣ กดปุ่ม **`เติมเงิน (QR Code)`** ระบบจะให้กรอกจำนวนเงิน\n"
+        "2️⃣ กดปุ่ม **`เช็คยอดเงิน`** เพื่อตรวจสอบความถูกต้อง\n"
+        "3️⃣ เลือกสินค้าที่ต้องการจาก **`เมนูด้านล่าง`** เพื่อสั่งซื้อทันที\n\n"
+        "⚠️ **ข้อตกลงและเงื่อนไข**\n"
+        "• โปรดตรวจสอบยอดเงินให้เพียงพอก่อนกดสั่งซื้อ\n"
+        "• สินค้าซื้อแล้วไม่รับเปลี่ยนหรือคืนเงินทุกกรณี\n"
+        "• หากพบปัญหาติดต่อแอดมินผ่านการเปิดตั๋วเท่านั้น\n\n"
+        "🛒 **เลือกสินค้าที่คุณต้องการได้เลย!** 👇"
+    )
+    embed_shop = discord.Embed(title="✨ 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 𝐒𝐇𝐎𝐏 ✨", description=description_text, color=discord.Color.from_rgb(47, 49, 54))
+    if SHOP_GIF_URL.startswith("http"): embed_shop.set_image(url=SHOP_GIF_URL)
+    await interaction.channel.send(embed=embed_shop, view=MainShopView())
+    await interaction.followup.send("✅ Done!")
 
 @bot.tree.command(name="add_money")
 async def add_money(interaction, user: discord.Member, amount: float):
@@ -572,5 +544,3 @@ async def on_message(message):
 server_on()
 # ⚠️ เปลี่ยน TOKEN ด้วยนะ!
 bot.run(os.getenv('TOKEN'))
-
-
