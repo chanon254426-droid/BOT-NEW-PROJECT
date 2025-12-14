@@ -36,7 +36,6 @@ SUCCESS_COLOR = 0x57F287
 ERROR_COLOR = 0xED4245
 
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
-# ใช้รูป Banner ร้านเท่ๆ หรือรูป GIF ตกแต่ง
 SHOP_BANNER_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif' 
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif'
 
@@ -50,7 +49,7 @@ EXPECTED_NAMES = [
 ]
 MIN_AMOUNT = 1.00
 
-# สินค้า (ใส่กี่ชิ้นก็ได้ ระบบจะจัดหน้าให้เอง หน้าละ 20 ปุ่ม)
+# สินค้า
 PRODUCTS = [
     {"id": "item1",  "emoji": "⭐",  "name": "𝙳𝙾𝙽𝙰𝚃𝙴",         "price": 89,  "role_id": 1431279741440364625},
     {"id": "item2",  "emoji": "👻",  "name": "ᴍᴏᴅ ᴅᴇᴠᴏᴜʀ",       "price": 120, "role_id": 1432064283767738571},
@@ -82,7 +81,7 @@ PRODUCTS = [
 ]
 
 # =================================================================
-# 💾 DATABASE SYSTEM (เหมือนเดิม)
+# 💾 DATABASE SYSTEM
 # =================================================================
 DB_FILE = "user_balance.json"
 SLIP_DB_FILE = "used_slips.json"
@@ -141,63 +140,39 @@ def save_used_slip(trans_ref):
 # ⚙️ SYSTEM FUNCTIONS
 # =================================================================
 
-# 🔥 ระบบกู้คืนข้อมูล (อัปเกรดให้รองรับ UI ใหม่)
 async def restore_database_from_logs(bot):
     print("🔄 Syncing database from Cyberpunk Logs...")
     channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID)
     if not channel: return
-
     balances = load_json(DB_FILE)
     totals = load_json(TOTAL_DB_FILE)
     msg_ids = load_json(LOG_MSG_DB)
-    
     count = 0
-    # อ่านข้อความย้อนหลัง
     async for message in channel.history(limit=None):
         if message.author.id != bot.user.id or not message.embeds: continue
-        
         embed = message.embeds[0]
         user_id = None
-        
-        # 1. พยายามหา UID จาก Description (แบบใหม่ Cyberpunk)
-        # รูปแบบ: UID      = 123456789
         if embed.description:
             id_match = re.search(r"UID\s*=\s*(\d+)", embed.description)
-            if id_match:
-                user_id = id_match.group(1)
-        
-        # 2. ถ้าหาไม่เจอ ลองหาจาก Footer (แบบเก่าเผื่อไว้)
+            if id_match: user_id = id_match.group(1)
         if not user_id and embed.footer and embed.footer.text:
             id_match_old = re.search(r"ID: (\d+)", embed.footer.text)
-            if id_match_old:
-                user_id = id_match_old.group(1)
-
+            if id_match_old: user_id = id_match_old.group(1)
         if not user_id: continue
 
-        # 3. ดึงยอดเงิน (รองรับทั้งแบบมี ฿ และไม่มี)
         for field in embed.fields:
-            # ยอดคงเหลือ
             if "CREDIT" in field.name or "เงินคงเหลือ" in field.name:
-                # หาตัวเลข (รวมจุดทศนิยมและลูกน้ำ)
                 bal_match = re.search(r"([\d,]+\.?\d*)", field.value)
                 if bal_match:
-                    # ลบลูกน้ำออกก่อนแปลงเป็น float เช่น 1,200 -> 1200
                     clean_bal = float(bal_match.group(1).replace(',', ''))
-                    # อัปเดตเฉพาะถ้ายอดในไฟล์เป็น 0 หรือต้องการ Force ทับ
-                    if float(balances.get(user_id, 0)) == 0:
-                        balances[user_id] = clean_bal
-
-            # ยอดเติมสะสม
+                    if float(balances.get(user_id, 0)) == 0: balances[user_id] = clean_bal
             if "LIFETIME" in field.name or "ยอดเติมสะสม" in field.name:
                 total_match = re.search(r"([\d,]+\.?\d*)", field.value)
                 if total_match:
                     clean_total = float(total_match.group(1).replace(',', ''))
-                    if float(totals.get(user_id, 0)) == 0:
-                        totals[user_id] = clean_total
-
+                    if float(totals.get(user_id, 0)) == 0: totals[user_id] = clean_total
         msg_ids[user_id] = message.id
         count += 1
-
     save_json(DB_FILE, balances)
     save_json(TOTAL_DB_FILE, totals)
     save_json(LOG_MSG_DB, msg_ids)
@@ -228,7 +203,6 @@ def check_slip_easyslip(image_url):
                 is_name_valid = any(" ".join(n.lower().split()) in clean_receiver for n in EXPECTED_NAMES)
                 if not is_name_valid: return False, 0, None, f"Wrong Receiver: {receiver}"
 
-            # Time check
             d_str = str(slip.get('date', '')); t_str = str(slip.get('time', ''))
             dt_str = f"{d_str} {t_str}".replace("T", " ").split("+")[0].split(".")[0]
             slip_dt = None
@@ -247,7 +221,7 @@ def check_slip_easyslip(image_url):
     except Exception as e: return False, 0, None, f"Error: {str(e)}"
 
 # =================================================================
-# 🎨 UI SYSTEM (GRID / WINDOW STYLE)
+# 🎨 UI SYSTEM (CLEAN GRID 4x4)
 # =================================================================
 
 class DashboardView(discord.ui.View):
@@ -344,44 +318,42 @@ class ProductConfirmView(discord.ui.View):
         if interaction.user.id == self.user_id:
             await interaction.response.edit_message(content="❌ Transaction Cancelled", embed=None, view=None)
 
-# 🔥 ปุ่มสินค้า (Product Button)
+# 🔥 ปุ่มสินค้า (บังคับ Row เพื่อความระเบียบ)
 class ProductButton(discord.ui.Button):
-    def __init__(self, product):
-        # สร้างปุ่ม: แสดง Emoji และชื่อสินค้า (ตัดคำถ้าชื่อยาวเกินไป)
-        super().__init__(style=discord.ButtonStyle.secondary, label=product['name'][:15], emoji=product['emoji'], row=None)
+    def __init__(self, product, row_index):
+        # ตัดชื่อให้สั้นลงเหลือ 15 ตัวอักษร เพื่อให้ปุ่มขนาดเท่าๆ กัน
+        super().__init__(style=discord.ButtonStyle.secondary, label=product['name'][:15], emoji=product['emoji'], row=row_index)
         self.product = product
 
     async def callback(self, interaction: discord.Interaction):
-        # พอกดปุ่มสินค้า -> เด้งรายละเอียดขึ้นมาถามยืนยัน
         embed = discord.Embed(title=f"{self.product['emoji']} {self.product['name']}", color=ACCENT_COLOR)
         embed.add_field(name="Price", value=f"```fix\n฿ {self.product['price']:.2f}```", inline=True)
         embed.add_field(name="Info", value="Auto Role / Fast Delivery", inline=True)
-        
         await interaction.response.send_message(embed=embed, view=ProductConfirmView(self.product, interaction.user.id), ephemeral=True)
 
-# 🔥 หน้าต่างรายการสินค้า (Grid Window)
+# 🔥 จัดหน้าต่างเป็น Grid 4x4 (16 Items/Page)
 class ProductGridBrowser(discord.ui.View):
     def __init__(self, products, page=0):
         super().__init__(timeout=None)
         self.products = products
         self.page = page
         
-        # 1 หน้า แสดงได้ 20 ปุ่ม (4 แถว x 5 คอลัมน์) 
-        # แถวที่ 5 เก็บไว้ใส่ปุ่ม "เปลี่ยนหน้า"
-        items_per_page = 20 
+        # ปรับเหลือ 16 ชิ้นต่อหน้า (4 แถว x 4 คอลัมน์)
+        items_per_page = 16 
         start = page * items_per_page
         end = start + items_per_page
         current_items = products[start:end]
 
-        # วนลูปสร้างปุ่มสินค้าใส่ลงไป
-        for prod in current_items:
-            self.add_item(ProductButton(prod))
+        # วนลูปใส่ปุ่ม พร้อมระบุบรรทัด (row) ชัดเจน
+        for i, prod in enumerate(current_items):
+            # i // 4 หมายถึง ทุกๆ 4 ปุ่ม ให้ขึ้นแถวใหม่ (จะได้ 0, 1, 2, 3)
+            row_idx = i // 4 
+            self.add_item(ProductButton(prod, row_idx))
 
-        # ปุ่มเปลี่ยนหน้า (Navigation) ใส่ไว้แถวล่างสุด (Row 4)
+        # ปุ่มเปลี่ยนหน้า (Navigation) ใส่ไว้แถวที่ 4 (Row 4)
         if page > 0:
             self.add_item(self.create_nav_button("⬅️ Prev", "prev_page", discord.ButtonStyle.primary))
         
-        # ปุ่มบอกหน้าปัจจุบัน (กดไม่ได้ เอาไว้โชว์เฉยๆ)
         total_pages = (len(products) - 1) // items_per_page + 1
         self.add_item(self.create_nav_button(f"Page {page + 1}/{total_pages}", "info", discord.ButtonStyle.gray, disabled=True))
 
@@ -389,6 +361,7 @@ class ProductGridBrowser(discord.ui.View):
             self.add_item(self.create_nav_button("Next ➡️", "next_page", discord.ButtonStyle.primary))
 
     def create_nav_button(self, label, cid, style, disabled=False):
+        # บังคับปุ่มเปลี่ยนหน้าให้อยู่แถวสุดท้ายเสมอ (row=4)
         btn = discord.ui.Button(label=label, custom_id=cid, style=style, disabled=disabled, row=4)
         btn.callback = self.nav_callback
         return btn
@@ -400,14 +373,13 @@ class ProductGridBrowser(discord.ui.View):
         elif custom_id == "prev_page":
             await interaction.response.edit_message(view=ProductGridBrowser(self.products, self.page - 1))
 
-# --- MAIN DASHBOARD (หน้าหลัก) ---
+# --- MAIN DASHBOARD ---
 
 class TopupModal(discord.ui.Modal, title="💳 TOPUP SYSTEM"):
     amount = discord.ui.TextInput(label="Enter Amount (THB)", placeholder="Example: 50", min_length=1, max_length=6)
     async def on_submit(self, interaction: discord.Interaction):
         try: val = float(self.amount.value)
         except: return await interaction.response.send_message("❌ Invalid Number", ephemeral=True)
-        
         embed = discord.Embed(title="🧾 PAYMENT INVOICE", color=discord.Color.gold())
         embed.description = f"**AMOUNT:** `{val:.2f} THB`\n\n**INSTRUCTIONS:**\n1. Scan QR Code\n2. Send Slip to <#{SLIP_CHANNEL_ID}>\n3. Wait 1-5 Seconds"
         embed.set_image(url=QR_CODE_URL)
@@ -418,8 +390,6 @@ class MainShopView(discord.ui.View):
 
     @discord.ui.button(label="BROWSE PRODUCTS", style=discord.ButtonStyle.primary, emoji="🛒", custom_id="browse_btn", row=0)
     async def browse(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # 🔥 จุดสำคัญ: ตรงนี้คือการเปิดหน้าต่างสินค้า (Grid Window)
-        # ephemeral=True ทำให้หน้าต่างนี้เด้งขึ้นมาให้ "เราเห็นคนเดียว" (Pop-up)
         await interaction.response.send_message(
             embed=discord.Embed(description="📂 **Select a product below:**", color=THEME_COLOR),
             view=ProductGridBrowser(PRODUCTS), 
@@ -433,13 +403,11 @@ class MainShopView(discord.ui.View):
     @discord.ui.button(label="MY PROFILE", style=discord.ButtonStyle.secondary, emoji="👤", custom_id="profile_btn", row=1)
     async def profile(self, interaction: discord.Interaction, button: discord.ui.Button):
         data = get_data(interaction.user.id)
-        # Rank Logic
         total = data['total']
         rank = "MEMBER"
-        if total > 400: rank = "DIAMOND 💎"
-        elif total > 200: rank = "GOLD 🏆"
+        if total > 500: rank = "DIAMOND 💎"
+        elif total > 150: rank = "GOLD 🏆"
         elif total > 50: rank = "SILVER 🥈"
-        
         embed = discord.Embed(title="💳 MEMBER CARD", color=THEME_COLOR)
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="OWNER", value=f"{interaction.user.mention}", inline=True)
@@ -477,7 +445,6 @@ async def setup_dashboard(interaction):
 @bot.tree.command(name="setup_shop")
 async def setup_shop(interaction):
     await interaction.response.defer(ephemeral=True)
-    
     embed = discord.Embed(title="⚡ CYBER STORE SYSTEM", color=THEME_COLOR)
     embed.description = (
         "> **WELCOME TO AUTOMATED STORE**\n"
@@ -493,7 +460,6 @@ async def setup_shop(interaction):
         "• Instant Role"
     )
     if SHOP_BANNER_URL.startswith("http"): embed.set_image(url=SHOP_BANNER_URL)
-    
     await interaction.channel.send(embed=embed, view=MainShopView())
     await interaction.followup.send("✅ Shop Interface Deployed!", ephemeral=True)
 
@@ -517,22 +483,18 @@ async def on_message(message):
                 if is_slip_used(ref):
                     await msg.edit(content=None, embed=discord.Embed(description="❌ **SLIP ALREADY USED**", color=ERROR_COLOR))
                     return
-                
                 new_bal = update_money(message.author.id, amount, is_topup=True)
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
-
                 embed = discord.Embed(title="✅ TOPUP SUCCESSFUL", color=SUCCESS_COLOR)
                 embed.description = f"```ini\n[ RECEIPT ]\nAMOUNT  = {amount:.2f} THB\nBALANCE = {new_bal:.2f} THB\nREF     = {ref}```"
                 embed.set_thumbnail(url=message.author.display_avatar.url)
                 await msg.edit(content=None, embed=embed)
-                
                 if hist := bot.get_channel(HISTORY_CHANNEL_ID):
                     log_embed = discord.Embed(title="🧾 NEW TRANSACTION", color=ACCENT_COLOR)
                     log_embed.description = f"User: {message.author.mention}\nAmount: {amount}\nRef: {ref}"
                     log_embed.set_image(url=message.attachments[0].url)
                     await hist.send(embed=log_embed)
-
                 await asyncio.sleep(5)
                 await message.delete()
                 await msg.delete()
