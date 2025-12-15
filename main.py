@@ -55,9 +55,9 @@ MIN_AMOUNT = 1.00
 
 # 🔗 ลิงก์สินค้า (ชื่อสินค้าต้องตรงกับใน PRODUCTS เป๊ะๆ)
 PRODUCT_LINKS = {
-    "[CMD] ลบประวัติ CMD": "https://pastebin.com/raw/kTdr5max",
-    "[CMD] ALL WEAPON": "https://pastebin.com/raw/VPyLYamM",
-    "[CMD] REBORNKILL": "https://pastebin.com/raw/AQap1A0Y",
+    "[CMD] ลบประวัติ CMD": "https://pastebin.com/raw/g8XH6xFx",
+    "[CMD] ALL WEAPON": "https://pastebin.com/raw/9TetnC4n",
+    "[CMD] REBORNKILL": "https://pastebin.com/raw/reX3bxgv",
     "[CMD] 60 7ET 8ACK": "https://pastebin.com/raw/dStL5MCt",
     # เพิ่มสินค้าอื่นๆ ตามต้องการ
 }
@@ -721,4 +721,5 @@ def load_db():
 
 server_on()
 bot.run(os.getenv('TOKEN'))
+
 
