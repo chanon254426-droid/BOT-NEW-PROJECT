@@ -25,7 +25,7 @@ SLIP_CHANNEL_ID = 1416797464350167090
 ADMIN_LOG_ID = 1441466742885978144      # ห้อง Log ที่บอทส่งสลิป (ใช้เช็คออเดอร์)
 HISTORY_CHANNEL_ID = 1444390933297631512
 REDEEM_CHANNEL_ID = 1449749949918089289  # ⚠️ ใส่ ID ห้องสำหรับกดแลกคีย์ที่นี่
-REDEEM_LOG_ID = 1444662604940181667     # ห้อง Log การแลกคีย์ (แจ้งเตือนแอดมิน)
+REDEEM_LOG_ID = 1450457258663215146     # ห้อง Log การแลกคีย์ (แจ้งเตือนแอดมิน)
 
 # Dashboard IDs
 DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423
@@ -53,13 +53,12 @@ EXPECTED_NAMES = [
 ]
 MIN_AMOUNT = 1.00
 
-# 🔗 ลิงก์สินค้า (ชื่อสินค้าต้องตรงกับใน PRODUCTS เป๊ะๆ)
+# 🔗 ลิงก์สินค้า
 PRODUCT_LINKS = {
     "[CMD] ลบประวัติ CMD": "https://pastebin.com/raw/g8XH6xFx",
     "[CMD] ALL WEAPON": "https://pastebin.com/raw/9TetnC4n",
     "[CMD] REBORNKILL": "https://pastebin.com/raw/reX3bxgv",
     "[CMD] 60 7ET 8ACK": "https://pastebin.com/raw/dStL5MCt",
-    # เพิ่มสินค้าอื่นๆ ตามต้องการ
 }
 
 # สินค้า
@@ -106,8 +105,8 @@ DB_FILE = "user_balance.json"
 SLIP_DB_FILE = "used_slips.json"
 TOTAL_DB_FILE = "total_topup.json"
 LOG_MSG_DB = "log_messages.json"
-RECEIPT_DB = "used_receipts.json" # เก็บเลขที่ใช้เเล้ว
-KEYS_DB = "distributed_keys.json" # เก็บคีย์ที่บอทจ่ายไปแล้ว
+RECEIPT_DB = "used_receipts.json" 
+KEYS_DB = "distributed_keys.json" 
 
 def load_json(filename):
     if not os.path.exists(filename):
@@ -134,16 +133,13 @@ def update_money(user_id, amount, is_topup=False):
     bal_db = load_json(DB_FILE)
     total_db = load_json(TOTAL_DB_FILE)
     uid = str(user_id)
-    
     current_bal = float(bal_db.get(uid, 0.0))
     new_bal = current_bal + float(amount)
     bal_db[uid] = new_bal
-    
     if is_topup and amount > 0:
         current_total = float(total_db.get(uid, 0.0))
         total_db[uid] = current_total + float(amount)
         save_json(TOTAL_DB_FILE, total_db)
-        
     save_json(DB_FILE, bal_db)
     return new_bal
 
@@ -265,43 +261,32 @@ def check_slip_easyslip(image_url):
 
 # --- REDEEM LOGIC ---
 def fetch_available_key(pastebin_url):
-    """ ดึงคีย์จาก Pastebin และหาคีย์ที่ยังว่าง """
     try:
         response = requests.get(pastebin_url)
         if response.status_code != 200: return None, "Link Error"
-        
         lines = response.text.splitlines()
         for line in lines:
             line = line.strip()
             if not line: continue
-            
-            # แยก Key กับ HWID ด้วยเครื่องหมายลูกน้ำ (,)
             parts = line.split(',')
             if len(parts) >= 1:
                 key = parts[0].strip()
                 hwid = parts[1].strip() if len(parts) > 1 else ""
-                
-                # ถ้า HWID ว่าง และ คีย์ยังไม่ถูกบอทจ่ายไป -> ใช้ได้
                 if hwid == "" and not is_key_distributed(key):
                     return key, "OK"
-                    
         return None, "No Keys Left" 
     except Exception as e:
         return None, str(e)
 
 async def verify_receipt(bot, receipt_id):
-    """ ตรวจสอบว่ามี Receipt ID นี้จริงไหมในห้อง Log """
-    log_channel = bot.get_channel(ADMIN_LOG_ID) # ใช้ห้อง Log เดียวกับร้านค้า
+    log_channel = bot.get_channel(ADMIN_LOG_ID) 
     if not log_channel: return False, None, "Log Channel Not Found"
-
-    async for message in log_channel.history(limit=300): # หา 300 ข้อความล่าสุด
+    async for message in log_channel.history(limit=300):
         if not message.embeds: continue
         embed = message.embeds[0]
         content = str(embed.description) + str(embed.footer.text if embed.footer else "")
-        
         clean_input_id = receipt_id.replace("#", "").strip()
         if clean_input_id in content:
-            # ดึงชื่อสินค้าออกมาจาก ITEM : ...
             item_match = re.search(r"ITEM\s*:\s*(.+)", content)
             if item_match:
                 product_name = item_match.group(1).strip()
@@ -328,16 +313,13 @@ async def update_user_log(bot, user_id):
     if not log_channel: return
     data = get_data(user_id)
     if data['total'] <= 0 and data['balance'] <= 0: return
-
     user = bot.get_user(int(user_id))
     user_name = user.name if user else f"USER_{user_id}"
-    
     embed = discord.Embed(color=THEME_COLOR)
     embed.description = f"```ini\n[ USER DATABASE RECORD ]\nUID      = {user_id}\nUSERNAME = {user_name}```"
     embed.add_field(name="💳 CURRENT CREDIT", value=f"```fix\n฿ {data['balance']:,.2f}```", inline=True)
     embed.add_field(name="📈 LIFETIME TOPUP", value=f"```yaml\n฿ {data['total']:,.2f}```", inline=True)
     embed.set_footer(text=f"LAST UPDATE: {datetime.now().strftime('%H:%M:%S')}")
-
     msg_db = load_json(LOG_MSG_DB)
     msg_id = msg_db.get(str(user_id))
     if msg_id:
@@ -367,19 +349,15 @@ class ProductConfirmView(discord.ui.View):
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id: return
         await interaction.response.defer()
-        
         data = get_data(interaction.user.id)
         price = self.product["price"]
-        
         if data['balance'] < price:
             embed = discord.Embed(description=f"⚠️ **INSUFFICIENT FUNDS**\nNeed: `{price - data['balance']:.2f} THB`", color=ERROR_COLOR)
             return await interaction.followup.send(embed=embed, ephemeral=True)
-
         update_money(interaction.user.id, -price)
         role = interaction.guild.get_role(self.product["role_id"])
         if role: await interaction.user.add_roles(role)
         await update_user_log(interaction.client, interaction.user.id)
-        
         order_id = str(uuid.uuid4())[:8].upper()
         
         embed = discord.Embed(title="✅ TRANSACTION SUCCESSFUL", color=SUCCESS_COLOR)
@@ -397,9 +375,7 @@ class ProductConfirmView(discord.ui.View):
         )
         embed.set_thumbnail(url=SUCCESS_GIF_URL)
         embed.set_footer(text="Thank you for your purchase", icon_url=interaction.user.display_avatar.url)
-        
         await interaction.edit_original_response(content=None, embed=embed, view=None)
-        
         if log := interaction.guild.get_channel(ADMIN_LOG_ID):
             await log.send(embed=embed)
 
@@ -425,25 +401,19 @@ class ProductGridBrowser(discord.ui.View):
         super().__init__(timeout=None)
         self.products = products
         self.page = page
-        
         COLUMNS = 2
         ROWS = 4
         ITEMS_PER_PAGE = COLUMNS * ROWS 
-        
         start = page * ITEMS_PER_PAGE
         end = start + ITEMS_PER_PAGE
         current_items = products[start:end]
-
         for i, prod in enumerate(current_items):
             row_idx = i // COLUMNS 
             self.add_item(ProductButton(prod, row_idx))
-
         if page > 0:
             self.add_item(self.create_nav_button("⬅️ Prev", "prev_page", discord.ButtonStyle.primary))
-        
         total_pages = (len(products) - 1) // ITEMS_PER_PAGE + 1
         self.add_item(self.create_nav_button(f"Page {page + 1}/{total_pages}", "info", discord.ButtonStyle.gray, disabled=True))
-
         if end < len(products):
             self.add_item(self.create_nav_button("Next ➡️", "next_page", discord.ButtonStyle.primary))
 
@@ -473,36 +443,25 @@ class RedeemModal(discord.ui.Modal, title="🔐 REDEEM LICENSE KEY"):
         await interaction.response.defer(ephemeral=True)
         rid = self.receipt_id.value.strip().upper()
         clean_rid = rid.replace("#", "")
-
-        # 1. เช็ค Local DB
         if is_receipt_used(clean_rid):
             await interaction.followup.send(f"❌ **ERROR:** ออเดอร์นี้ `{rid}` ถูกใช้งานไปแล้ว!", ephemeral=True)
             return
-
-        # 2. เช็ค Log
         found, product_name, msg = await verify_receipt(interaction.client, clean_rid)
         if not found:
             await interaction.followup.send(f"❌ **ERROR:** ไม่พบเลข Order `{rid}` ในระบบ\nโปรดตรวจสอบความถูกต้อง หรือรอระบบอัปเดตสักครู่", ephemeral=True)
             return
-
-        # 3. เช็คลิงก์ Pastebin
         pastebin_url = PRODUCT_LINKS.get(product_name)
         if not pastebin_url:
             await interaction.followup.send(f"⚠️ สินค้า `{product_name}` ไม่ใช่สินค้าประเภท Key หรือยังไม่ได้ลงทะเบียน", ephemeral=True)
             return
-
-        # 4. ดึงคีย์
         key, status = fetch_available_key(pastebin_url)
         if not key:
             await interaction.followup.send(f"😭 **ขออภัย:** สินค้า `{product_name}` คีย์หมดชั่วคราว\nโปรดติดต่อแอดมินเพื่อเติมของ", ephemeral=True)
             if log := interaction.guild.get_channel(REDEEM_LOG_ID):
                 await log.send(f"⚠️ **OUT OF STOCK ALERT:** {product_name} (User tried to redeem)")
             return
-
-        # ✅ สำเร็จ
         mark_receipt_used(clean_rid)
         mark_key_distributed(key)
-
         try:
             dm_embed = discord.Embed(title="📦 PRODUCT DELIVERY", color=SUCCESS_COLOR)
             dm_embed.description = (
@@ -525,7 +484,6 @@ class RedeemModal(discord.ui.Modal, title="🔐 REDEEM LICENSE KEY"):
             success_embed.description += f"\n\n🔑 **YOUR KEY:**\n```{key}```"
         
         await interaction.followup.send(embed=success_embed, ephemeral=True)
-
         if log_channel := interaction.guild.get_channel(REDEEM_LOG_ID):
             log_embed = discord.Embed(title="🔐 KEY REDEEMED LOG", color=CYBER_COLOR)
             log_embed.description = (
@@ -589,9 +547,9 @@ class MainShopView(discord.ui.View):
         data = get_data(interaction.user.id)
         total = data['total']
         rank = "MEMBER"
-        if total > 500: rank = "DIAMOND 💎"
-        elif total > 100: rank = "GOLD 🏆"
-        elif total > 50: rank = "SILVER 🥈"
+        if total > 5000: rank = "DIAMOND 💎"
+        elif total > 1000: rank = "GOLD 🏆"
+        elif total > 500: rank = "SILVER 🥈"
         embed = discord.Embed(title="💳 MEMBER CARD", color=THEME_COLOR)
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="OWNER", value=f"{interaction.user.mention}", inline=True)
@@ -599,6 +557,70 @@ class MainShopView(discord.ui.View):
         embed.add_field(name="WALLET BALANCE", value=f"```fix\n฿ {data['balance']:,.2f}```", inline=False)
         embed.add_field(name="TOTAL SPENT", value=f"```yaml\n฿ {data['total']:,.2f}```", inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+class GiveawayView(discord.ui.View):
+    def __init__(self, amount, max_winners, creator_id):
+        super().__init__(timeout=None)
+        self.amount = amount
+        self.max_winners = max_winners
+        self.creator_id = creator_id
+        self.claimed_users = []
+
+    def update_button(self):
+        btn = self.children[0]
+        if len(self.claimed_users) >= self.max_winners:
+            btn.label = "🔴 MISSION COMPLETED (เต็มแล้ว)"
+            btn.style = discord.ButtonStyle.danger
+            btn.disabled = True
+            btn.emoji = "🔒"
+        else:
+            btn.label = f"CLAIM {self.amount} THB ({len(self.claimed_users)}/{self.max_winners})"
+            btn.style = discord.ButtonStyle.success
+            btn.emoji = "🎁"
+
+    @discord.ui.button(label="CLAIM REWARD", style=discord.ButtonStyle.success, emoji="🎁", custom_id="airdrop_claim")
+    async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id in self.claimed_users:
+            return await interaction.response.send_message("❌ **ACCESS DENIED:** คุณรับสิทธิ์ไปแล้ว!", ephemeral=True)
+        if len(self.claimed_users) >= self.max_winners:
+            return await interaction.response.send_message("❌ **MISSION FAILED:** สิทธิ์เต็มแล้ว!", ephemeral=True)
+        self.claimed_users.append(interaction.user.id)
+        update_money(interaction.user.id, self.amount, is_topup=True)
+        await update_user_log(interaction.client, interaction.user.id)
+        await interaction.response.send_message(f"✅ **SYSTEM:** โอน `{self.amount} THB` เข้าบัญชีสำเร็จ!", ephemeral=True)
+        self.update_button()
+        if len(self.claimed_users) >= self.max_winners:
+            embed = interaction.message.embeds[0]
+            embed.color = 0x2b2d31 
+            embed.title = "🏁 EVENT ENDED | จบกิจกรรม"
+            embed.description = f"```diff\n- QUOTA REACHED ({self.max_winners}/{self.max_winners})\n- REWARD: {self.amount} THB```\nขอบคุณที่ร่วมสนุก! รอติดตามรอบหน้า"
+            embed.set_image(url=None) 
+            await interaction.message.edit(embed=embed, view=self)
+        else:
+            await interaction.message.edit(view=self)
+
+@bot.tree.command(name="create_airdrop", description="[Admin] แจกเงินฟรี (AirDrop)")
+@app_commands.default_permissions(administrator=True)
+@app_commands.describe(amount="จำนวนเงินที่จะแจกต่อคน", winners="จำนวนคนที่รับได้", notify="แท็ก everyone ไหม?")
+async def create_airdrop(interaction: discord.Interaction, amount: float, winners: int, notify: bool = False):
+    if amount < 1 or winners < 1:
+        return await interaction.response.send_message("❌ จำนวนเงินหรือผู้รับต้องมากกว่า 0", ephemeral=True)
+    embed = discord.Embed(title="🚀 CYBER AIRDROP INCOMING!", color=0x00ff41) 
+    embed.description = (
+        f"# 💸 แจกฟรี: `{amount:.2f} THB`\n"
+        f"**⚡ จำนวนจำกัด:** `{winners} ท่านแรก` เท่านั้น!\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "**🎯 MISSION:**\n"
+        "> กดปุ่มสีเขียวด้านล่างให้ทัน!\n"
+        "> *มาก่อนได้ก่อน (First Come First Served)*"
+    )
+    embed.set_image(url="https://media.discordapp.net/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif") 
+    embed.set_footer(text=f"Sponsored by {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+    view = GiveawayView(amount, winners, interaction.user.id)
+    view.update_button() 
+    content_msg = "@everyone 🚨 **AIRDROP ALERT!** มารับเงินฟรีเร็ววว!" if notify else "🚨 **AIRDROP ALERT!**"
+    await interaction.channel.send(content=content_msg, embed=embed, view=view)
+    await interaction.response.send_message("✅ สร้างกิจกรรมเรียบร้อย!", ephemeral=True)
 
 # =================================================================
 # 🤖 BOT SETUP
@@ -683,32 +705,60 @@ async def add_money(interaction, user: discord.Member, amount: float):
 async def on_message(message):
     if message.author.bot: return
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
-        msg = await message.channel.send(embed=discord.Embed(description="⏳ **VERIFYING SLIP...**", color=discord.Color.yellow()))
         try:
-            success, amount, ref, txt = check_slip_easyslip(message.attachments[0].url)
+            # 🔥 1. ดาวน์โหลดรูปสลิปเก็บไว้ก่อน (กันรูปลบแล้วลิงก์เสีย)
+            img_url = message.attachments[0].url
+            img_data = requests.get(img_url).content
+            
+            # 🔥 2. เช็คสลิป
+            success, amount, ref, txt = check_slip_easyslip(img_url)
+            
             if success:
                 if is_slip_used(ref):
-                    await msg.edit(content=None, embed=discord.Embed(description="❌ **SLIP ALREADY USED**", color=ERROR_COLOR))
+                    await message.channel.send(content=f"{message.author.mention}", embed=discord.Embed(description="❌ **SLIP ALREADY USED**", color=ERROR_COLOR), delete_after=10)
+                    await message.delete()
                     return
+                
+                # อัปเดตเงิน
                 new_bal = update_money(message.author.id, amount, is_topup=True)
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
+                
+                # แจ้งเตือนลูกค้า
                 embed = discord.Embed(title="✅ TOPUP SUCCESSFUL", color=SUCCESS_COLOR)
                 embed.description = f"```ini\n[ RECEIPT ]\nAMOUNT  = {amount:.2f} THB\nBALANCE = {new_bal:.2f} THB\nREF     = {ref}```"
                 embed.set_thumbnail(url=message.author.display_avatar.url)
-                await msg.edit(content=None, embed=embed)
+                await message.channel.send(content=f"{message.author.mention}", embed=embed, delete_after=15)
+                
+                # 🔥 3. ส่ง Log เข้าห้องแอดมิน (แบบอัปโหลดไฟล์ใหม่)
                 if hist := bot.get_channel(HISTORY_CHANNEL_ID):
-                    log_embed = discord.Embed(title="🧾 NEW TRANSACTION", color=ACCENT_COLOR)
-                    log_embed.description = f"User: {message.author.mention}\nAmount: {amount}\nRef: {ref}"
-                    log_embed.set_image(url=message.attachments[0].url)
-                    await hist.send(embed=log_embed)
-                await asyncio.sleep(5)
+                    # สร้างไฟล์จากข้อมูลที่โหลดมา
+                    slip_file = discord.File(io.BytesIO(img_data), filename=f"slip_{ref}.jpg")
+                    
+                    log_embed = discord.Embed(title="💳 SLIP VERIFIED | บันทึกการเติมเงิน", color=CYBER_COLOR)
+                    log_embed.description = (
+                        f"```ini\n"
+                        f"[ TRANSACTION RECORD ]\n"
+                        f"USER     = {message.author.name}\n"
+                        f"UID      = {message.author.id}\n"
+                        f"AMOUNT   = {amount:.2f} THB\n"
+                        f"REF      = {ref}\n"
+                        f"TIME     = {datetime.now().strftime('%H:%M:%S')}\n"
+                        f"```\n"
+                        f"👤 **User:** {message.author.mention}"
+                    )
+                    log_embed.set_thumbnail(url=message.author.display_avatar.url)
+                    log_embed.set_image(url=f"attachment://slip_{ref}.jpg") # อ้างอิงไฟล์ที่อัปโหลด
+                    log_embed.set_footer(text="Auto-Verification System")
+                    
+                    await hist.send(embed=log_embed, file=slip_file) # ส่งทั้ง Embed และไฟล์รูป
+                
                 await message.delete()
-                await msg.delete()
             else:
-                await msg.edit(content=None, embed=discord.Embed(description=f"❌ **ERROR:** {txt}", color=ERROR_COLOR))
+                await message.channel.send(content=f"{message.author.mention}", embed=discord.Embed(description=f"❌ **ERROR:** {txt}", color=ERROR_COLOR), delete_after=10)
+                await message.delete()
         except Exception as e:
-            await msg.edit(content=f"Error: {e}")
+            print(f"Error: {e}")
 
 # =================================================================
 # ⚙️ RUN
@@ -721,5 +771,3 @@ def load_db():
 
 server_on()
 bot.run(os.getenv('TOKEN'))
-
-
