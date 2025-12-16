@@ -19,17 +19,26 @@ from myserver import server_on
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
 
-# Channel IDs
-SHOP_CHANNEL_ID = 1416797606180552714
-SLIP_CHANNEL_ID = 1416797464350167090
-ADMIN_LOG_ID = 1441466742885978144      # ห้อง Log ที่บอทส่งสลิป
-HISTORY_CHANNEL_ID = 1444390933297631512
-REDEEM_CHANNEL_ID = 1449749949918089289 # ห้องแลกคีย์
-REDEEM_LOG_ID = 1450457258663215146     # ห้อง Log การแลกคีย์
+# --------------------------------------------------------
+# 🔑 ZONE: ตั้งค่า ID ห้อง (ใส่ให้ตรงตามที่ลิสต์มา)
+# --------------------------------------------------------
 
-# Dashboard IDs
-DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423
-DASHBOARD_LOG_CHANNEL_ID = 1444662604940181667
+# 1. ห้องหน้าร้าน & หน้าเติมเงิน (ที่ลูกค้าเห็น)
+SHOP_CHANNEL_ID = 1416797606180552714      # ห้องสำหรับพิมพ์ /setup_shop (หน้าร้าน)
+SLIP_CHANNEL_ID = 1416797464350167090      # ห้องที่ลูกค้าส่งสลิปโอนเงิน
+REDEEM_CHANNEL_ID = 1449749949918089289    # ห้องที่ลูกค้ากดปุ่ม Redeem Key
+
+# 2. ห้อง LOGS หลังบ้าน (สำหรับแอดมิน)
+PURCHASE_LOG_ID = 1441466742885978144      # [🔒ประวัติการซื้อ] บิลสั่งซื้อ (ใช้เช็คออเดอร์ Redeem)
+SLIP_LOG_ID = 1444390933297631512          # [🔒ประวัติสลิป] เก็บรูปสลิปที่ลูกค้าส่งมา
+ADD_MONEY_LOG_ID = 1450457258663215146     # [🔒ประวัติเพิ่มเงิน] Log การเสกเงิน / Airdrop (สร้างห้องใหม่หรือใช้รวมได้)
+REDEEM_LOG_ID = 1450457258663215146        # [🔒ประวัติแลกคีย์] Log ว่าใครเอาคีย์อะไรไป
+
+# 3. ห้อง DATABASE & DASHBOARD (ห้ามลบข้อความในนี้)
+DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423 # ห้องสำหรับแอดมินพิมพ์ /setup_dashboard
+BALANCE_LOG_ID = 1444662604940181667           # [🔒ห้องเก็บยอดเงินรวม] เก็บยอดคงเหลือลูกค้าทุกคน (Database)
+
+# --------------------------------------------------------
 
 # Assets & Theme
 THEME_COLOR = 0x2b2d31  
@@ -136,10 +145,12 @@ def update_money(user_id, amount, is_topup=False):
     current_bal = float(bal_db.get(uid, 0.0))
     new_bal = current_bal + float(amount)
     bal_db[uid] = new_bal
+    
     if is_topup and amount > 0:
         current_total = float(total_db.get(uid, 0.0))
         total_db[uid] = current_total + float(amount)
         save_json(TOTAL_DB_FILE, total_db)
+        
     save_json(DB_FILE, bal_db)
     return new_bal
 
@@ -176,7 +187,7 @@ def mark_key_distributed(key):
         save_json(KEYS_DB, used)
 
 # =================================================================
-# 🤖 BOT INITIALIZATION (ย้ายมาไว้ตรงนี้ก่อนการใช้งาน)
+# 🤖 BOT INITIALIZATION
 # =================================================================
 intents = discord.Intents.default()
 intents.members = True
@@ -189,7 +200,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 async def restore_database_from_logs(bot):
     print("🔄 Syncing database from Cyberpunk Logs...")
-    channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID)
+    channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID) # ⚠️ ใช้ห้องเก็บยอดเงินรวม (BALANCE_LOG_ID)
     if not channel: return
     balances = load_json(DB_FILE)
     totals = load_json(TOTAL_DB_FILE)
@@ -287,7 +298,8 @@ def fetch_available_key(pastebin_url):
         return None, str(e)
 
 async def verify_receipt(bot, receipt_id):
-    log_channel = bot.get_channel(ADMIN_LOG_ID) 
+    # ⚠️ ใช้ห้อง PURCHASE_LOG_ID เพื่อเช็คออเดอร์ (ตามข้อ 4 ของคุณ)
+    log_channel = bot.get_channel(PURCHASE_LOG_ID) 
     if not log_channel: return False, None, "Log Channel Not Found"
     async for message in log_channel.history(limit=300):
         if not message.embeds: continue
@@ -317,7 +329,8 @@ class DashboardView(discord.ui.View):
         await interaction.followup.send("✅ System Synced Successfully!")
 
 async def update_user_log(bot, user_id):
-    log_channel = bot.get_channel(DASHBOARD_LOG_CHANNEL_ID)
+    # ⚠️ ใช้ห้อง BALANCE_LOG_ID (ห้องเก็บยอดเงินรวม) ตามข้อ 4
+    log_channel = bot.get_channel(BALANCE_LOG_ID)
     if not log_channel: return
     data = get_data(user_id)
     if data['total'] <= 0 and data['balance'] <= 0: return
@@ -384,7 +397,9 @@ class ProductConfirmView(discord.ui.View):
         embed.set_thumbnail(url=SUCCESS_GIF_URL)
         embed.set_footer(text="Thank you for your purchase", icon_url=interaction.user.display_avatar.url)
         await interaction.edit_original_response(content=None, embed=embed, view=None)
-        if log := interaction.guild.get_channel(ADMIN_LOG_ID):
+        
+        # ⚠️ ส่ง Log ไปห้อง PURCHASE_LOG_ID (ประวัติการซื้อ)
+        if log := interaction.guild.get_channel(PURCHASE_LOG_ID):
             await log.send(embed=embed)
 
     @discord.ui.button(label="CANCEL", style=discord.ButtonStyle.secondary)
@@ -454,6 +469,7 @@ class RedeemModal(discord.ui.Modal, title="🔐 REDEEM LICENSE KEY"):
         if is_receipt_used(clean_rid):
             await interaction.followup.send(f"❌ **ERROR:** ออเดอร์นี้ `{rid}` ถูกใช้งานไปแล้ว!", ephemeral=True)
             return
+        # ⚠️ เช็คออเดอร์ใน PURCHASE_LOG_ID
         found, product_name, msg = await verify_receipt(interaction.client, clean_rid)
         if not found:
             await interaction.followup.send(f"❌ **ERROR:** ไม่พบเลข Order `{rid}` ในระบบ\nโปรดตรวจสอบความถูกต้อง หรือรอระบบอัปเดตสักครู่", ephemeral=True)
@@ -492,6 +508,7 @@ class RedeemModal(discord.ui.Modal, title="🔐 REDEEM LICENSE KEY"):
             success_embed.description += f"\n\n🔑 **YOUR KEY:**\n```{key}```"
         
         await interaction.followup.send(embed=success_embed, ephemeral=True)
+        # ⚠️ ส่ง Log แลกคีย์ไป REDEEM_LOG_ID
         if log_channel := interaction.guild.get_channel(REDEEM_LOG_ID):
             log_embed = discord.Embed(title="🔐 KEY REDEEMED LOG", color=CYBER_COLOR)
             log_embed.description = (
@@ -532,7 +549,7 @@ class TopupModal(discord.ui.Modal, title="💸 TOPUP - เติมเงิน"
             "━━━━━━━━━━━━━━━━━━━━━━━━"
         )
         embed.set_image(url=QR_CODE_URL)
-        embed.set_footer(text="ระบบอัตโนมัติ 24 ชม. • Powered by AI", icon_url=interaction.client.user.display_avatar.url)
+        embed.set_footer(text="ระบบอัตโนมัติ 24 ชม. • Powered by LAIKA", icon_url=interaction.client.user.display_avatar.url)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 class MainShopView(discord.ui.View):
@@ -702,7 +719,9 @@ async def add_money(interaction, user: discord.Member, amount: float):
     await update_user_log(interaction.client, user.id)
     embed = discord.Embed(description=f"✅ **ADDED** `{amount} THB` to {user.mention}\nNew Balance: `{new_bal} THB`", color=SUCCESS_COLOR)
     await interaction.response.send_message(embed=embed)
-    if log := bot.get_channel(ADMIN_LOG_ID):
+    
+    # ⚠️ ส่ง Log ไปห้อง ADD_MONEY_LOG_ID
+    if log := bot.get_channel(ADD_MONEY_LOG_ID):
         await log.send(f"🔧 **[MANUAL ADJ]** {interaction.user.name} added {amount} to {user.name}")
 
 @bot.event
@@ -710,11 +729,9 @@ async def on_message(message):
     if message.author.bot: return
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
         try:
-            # 🔥 1. ดาวน์โหลดรูปสลิปเก็บไว้ก่อน (กันรูปลบแล้วลิงก์เสีย)
             img_url = message.attachments[0].url
             img_data = requests.get(img_url).content
             
-            # 🔥 2. เช็คสลิป
             success, amount, ref, txt = check_slip_easyslip(img_url)
             
             if success:
@@ -723,22 +740,18 @@ async def on_message(message):
                     await message.delete()
                     return
                 
-                # อัปเดตเงิน
                 new_bal = update_money(message.author.id, amount, is_topup=True)
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
                 
-                # แจ้งเตือนลูกค้า
                 embed = discord.Embed(title="✅ TOPUP SUCCESSFUL", color=SUCCESS_COLOR)
                 embed.description = f"```ini\n[ RECEIPT ]\nAMOUNT  = {amount:.2f} THB\nBALANCE = {new_bal:.2f} THB\nREF     = {ref}```"
                 embed.set_thumbnail(url=message.author.display_avatar.url)
                 await message.channel.send(content=f"{message.author.mention}", embed=embed, delete_after=15)
                 
-                # 🔥 3. ส่ง Log เข้าห้องแอดมิน (แบบอัปโหลดไฟล์ใหม่)
-                if hist := bot.get_channel(HISTORY_CHANNEL_ID):
-                    # สร้างไฟล์จากข้อมูลที่โหลดมา
+                # ⚠️ ส่ง Log ไปห้อง SLIP_LOG_ID (ประวัติสลิป)
+                if hist := bot.get_channel(SLIP_LOG_ID):
                     slip_file = discord.File(io.BytesIO(img_data), filename=f"slip_{ref}.jpg")
-                    
                     log_embed = discord.Embed(title="💳 SLIP VERIFIED | บันทึกการเติมเงิน", color=CYBER_COLOR)
                     log_embed.description = (
                         f"```ini\n"
@@ -752,10 +765,10 @@ async def on_message(message):
                         f"👤 **User:** {message.author.mention}"
                     )
                     log_embed.set_thumbnail(url=message.author.display_avatar.url)
-                    log_embed.set_image(url=f"attachment://slip_{ref}.jpg") # อ้างอิงไฟล์ที่อัปโหลด
+                    log_embed.set_image(url=f"attachment://slip_{ref}.jpg")
                     log_embed.set_footer(text="Auto-Verification System")
                     
-                    await hist.send(embed=log_embed, file=slip_file) # ส่งทั้ง Embed และไฟล์รูป
+                    await hist.send(embed=log_embed, file=slip_file)
                 
                 await message.delete()
             else:
