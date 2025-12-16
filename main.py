@@ -22,10 +22,10 @@ EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
 # Channel IDs
 SHOP_CHANNEL_ID = 1416797606180552714
 SLIP_CHANNEL_ID = 1416797464350167090
-ADMIN_LOG_ID = 1441466742885978144      # ห้อง Log ที่บอทส่งสลิป (ใช้เช็คออเดอร์)
+ADMIN_LOG_ID = 1441466742885978144      # ห้อง Log ที่บอทส่งสลิป
 HISTORY_CHANNEL_ID = 1444390933297631512
-REDEEM_CHANNEL_ID = 1449749949918089289  # ⚠️ ใส่ ID ห้องสำหรับกดแลกคีย์ที่นี่
-REDEEM_LOG_ID = 1450457258663215146     # ห้อง Log การแลกคีย์ (แจ้งเตือนแอดมิน)
+REDEEM_CHANNEL_ID = 1449749949918089289 # ห้องแลกคีย์
+REDEEM_LOG_ID = 1450457258663215146     # ห้อง Log การแลกคีย์
 
 # Dashboard IDs
 DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423
@@ -174,6 +174,14 @@ def mark_key_distributed(key):
     if key not in used:
         used.append(key)
         save_json(KEYS_DB, used)
+
+# =================================================================
+# 🤖 BOT INITIALIZATION (ย้ายมาไว้ตรงนี้ก่อนการใช้งาน)
+# =================================================================
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 # =================================================================
 # ⚙️ SYSTEM FUNCTIONS
@@ -547,9 +555,9 @@ class MainShopView(discord.ui.View):
         data = get_data(interaction.user.id)
         total = data['total']
         rank = "MEMBER"
-        if total > 5000: rank = "DIAMOND 💎"
-        elif total > 1000: rank = "GOLD 🏆"
-        elif total > 500: rank = "SILVER 🥈"
+        if total > 500: rank = "DIAMOND 💎"
+        elif total > 100: rank = "GOLD 🏆"
+        elif total > 50: rank = "SILVER 🥈"
         embed = discord.Embed(title="💳 MEMBER CARD", color=THEME_COLOR)
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="OWNER", value=f"{interaction.user.mention}", inline=True)
@@ -623,12 +631,8 @@ async def create_airdrop(interaction: discord.Interaction, amount: float, winner
     await interaction.response.send_message("✅ สร้างกิจกรรมเรียบร้อย!", ephemeral=True)
 
 # =================================================================
-# 🤖 BOT SETUP
+# 🚀 EVENTS & STARTUP
 # =================================================================
-intents = discord.Intents.default()
-intents.members = True
-intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
@@ -766,7 +770,6 @@ async def on_message(message):
 def load_db():
     load_json(DB_FILE); load_json(SLIP_DB_FILE)
     load_json(TOTAL_DB_FILE); load_json(LOG_MSG_DB)
-    # เพิ่ม DB ของระบบ Redeem
     load_json(RECEIPT_DB); load_json(KEYS_DB)
 
 server_on()
