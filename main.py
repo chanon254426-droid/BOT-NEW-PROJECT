@@ -988,6 +988,7 @@ async def on_message(message):
                 await message.delete()
         except Exception as e:
             print(f"Error: {e}")
+    await bot.process_commands(message)
 
 # =================================================================
 # ⚙️ RUN
