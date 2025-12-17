@@ -886,6 +886,25 @@ async def setup_hwid_panel(interaction: discord.Interaction):
     await interaction.channel.send(embed=embed, view=HwidManagerView())
     await interaction.response.send_message("✅ Created Admin Panel", ephemeral=True)
 
+# คำสั่งใหม่: สร้างหน้าจอ DASHBOARD (FORCE SYNC & ADD MONEY)
+@bot.tree.command(name="setup_dashboard", description="[Admin] Create Control Panel")
+@app_commands.default_permissions(administrator=True)
+async def setup_dashboard(interaction: discord.Interaction):
+    if interaction.channel_id != DASHBOARD_CMD_CHANNEL_ID:
+        return await interaction.response.send_message("❌ ผิดห้อง (Wrong Channel)", ephemeral=True)
+    
+    embed = discord.Embed(title="🎛️ ADMIN DASHBOARD", color=THEME_COLOR)
+    embed.description = (
+        "**DATA CONTROL CENTER**\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "**TOOLS:**\n"
+        "🔄 `FORCE SYNC`: กู้คืน Database จากห้อง Logs\n"
+        "💸 `ADD BALANCE`: เติมเงินให้ลูกค้า (Manual)\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    )
+    await interaction.channel.send(embed=embed, view=DashboardView())
+    await interaction.response.send_message("✅ Dashboard Panel Created", ephemeral=True)
+
 @bot.tree.command(name="setup_shop")
 async def setup_shop(interaction):
     await interaction.response.defer(ephemeral=True)
