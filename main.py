@@ -11,6 +11,8 @@ import uuid
 import asyncio
 from datetime import datetime, timedelta
 from myserver import server_on
+# 👇 ต้องลงไลบรารี่เพิ่ม: pip install PyGithub
+from github import Github 
 
 # =================================================================
 # ⚙️ CONFIGURATION (ตั้งค่าระบบ)
@@ -18,6 +20,11 @@ from myserver import server_on
 
 DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
+
+# --------------------------------------------------------
+# 🐱 GITHUB CONFIG (ใส่ Token อย่างเดียวพอ)
+# --------------------------------------------------------
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 
 # --------------------------------------------------------
 # 🔑 ZONE: ตั้งค่า ID ห้อง (ใส่เลขห้องจริงที่นี่)
@@ -32,7 +39,7 @@ REDEEM_CHANNEL_ID = 1449749949918089289     # ห้องพิมพ์ /setup
 PURCHASE_LOG_ID = 1450487180416778321       # 🔒:ประวัติการซื้อ (บิลสั่งซื้อ / ใช้เช็คแลกคีย์)
 SLIP_LOG_ID = 1444390933297631512           # 🔒:ประวัติสลีปโอนเงิน (เก็บรูปสลิป)
 ADD_MONEY_LOG_ID = 1450470356979683328      # 🔒:ประวัติเพิ่มเงิน (Log เสกเงิน/Airdrop)
-REDEEM_LOG_ID = 1450457258663215146         # 🔒:ประวัติแลกคีย์ (Log การดึงคีย์)
+REDEEM_LOG_ID = 1450457258663215146         # 🔒:ประวัติแลกคีย์ (Log การดึงคีย์) ⚠️ สำคัญสำหรับการ Search
 
 # 3. ห้อง DATABASE & DASHBOARD
 DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423 # ห้องพิมพ์ /setup_dashboard
@@ -52,60 +59,59 @@ QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_BANNER_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif' 
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif'
 
-# 🔥 ชื่อผู้รับเงิน (บัญชีของคุณ) ที่อนุญาตให้ผ่าน
-# ใส่แค่คีย์เวิร์ดสำคัญ ไม่ต้องใส่คำนำหน้า
+# 🔥 ชื่อผู้รับเงิน
 EXPECTED_NAMES = [
-    'ชานนท์ ขันทอง',   # ภาษาไทยเต็ม
-    'ชานนท์',         # ภาษาไทยบางส่วน (เผื่อตัดนามสกุล)
-    'chanon khantong', # อังกฤษเต็ม
-    'chanon',          # อังกฤษบางส่วน (เผื่อมาแค่ชื่อต้น)
-    'khantong'         # นามสกุลอย่างเดียว
+    'ชานนท์ ขันทอง',   
+    'ชานนท์',         
+    'chanon khantong', 
+    'chanon',          
+    'khantong'         
 ]
 MIN_AMOUNT = 1.00
 
-# 🔗 ลิงก์สินค้า
+# 🔗 ลิงก์สินค้า (Gist Raw แบบไม่มี Hash)
 PRODUCT_LINKS = {
-    "[CMD] ลบประวัติ CMD": "https://pastebin.com/raw/g8XH6xFx",
-    "[CMD] ALL WEAPON": "https://pastebin.com/raw/9TetnC4n",
-    "[CMD] REBORNKILL": "https://pastebin.com/raw/reX3bxgv",
-    "[CMD] 60 7ET 8ACK": "https://pastebin.com/raw/dStL5MCt",
+    "[CMD] ลบประวัติ CMD": "https://gist.githubusercontent.com/chanon254426-droid/7666888514952966fdcf230bb7a65d22/raw/cleaner.txt",
+    "[CMD] ALL WEAPON": "https://gist.githubusercontent.com/chanon254426-droid/c83112e3ab72327fd0d19a6cd2d0177c/raw/allweapon.txt",
+    "[CMD] REBORNKILL": "https://gist.githubusercontent.com/chanon254426-droid/dc091d05cad4cbe41017a5844da93bb8/raw/rebornkill.txt",
+    "[CMD] 60 7ET 8ACK": "https://gist.githubusercontent.com/chanon254426-droid/5c41a78a958cb41c26a6654a66486f0a/raw/hogetback.txt",
 }
 
 # สินค้า
 PRODUCTS = [
-    {"id": "item1", "emoji": "🏆",  "name": "VVIP [ยศทั้งร้าน]🏆",         "price": 599,  "role_id": 1449658582244262041},
-    {"id": "item2",  "emoji": "⭐",  "name": "DONATE",         "price": 89,  "role_id": 1431279741440364625},
-    {"id": "item3", "emoji": "🎮",  "name": "BOOST FPS",         "price": 99,  "role_id": 1432010188340199504},
-    {"id": "item4",  "emoji": "👻",  "name": "MODS DEVOUR",       "price": 120, "role_id": 1432064283767738571},
-    {"id": "item5", "emoji": "🚧",  "name": "TOGYO MOD",         "price": 59,  "role_id": 1448142708286947449},
+    {"id": "item1", "emoji": "🏆",  "name": "VVIP [ยศทั้งร้าน]🏆", "price": 599,  "role_id": 1449658582244262041},
+    {"id": "item2",  "emoji": "⭐",  "name": "DONATE", "price": 89,  "role_id": 1431279741440364625},
+    {"id": "item3", "emoji": "🎮",  "name": "BOOST FPS", "price": 99,  "role_id": 1432010188340199504},
+    {"id": "item4",  "emoji": "👻",  "name": "MODS DEVOUR", "price": 120, "role_id": 1432064283767738571},
+    {"id": "item5", "emoji": "🚧",  "name": "TOGYO MOD", "price": 59,  "role_id": 1448142708286947449},
     {"id": "item6",  "emoji": "🗑️",  "name": "ลบประวัติรันโปรแกรม","price": 49,  "role_id": 1444191566838370365},
     {"id": "item7",  "emoji": "👑",  "name": "[CMD] SETTING PREMIUM", "price": 169, "role_id": 1419373724653588540},
-    {"id": "item8",  "emoji": "⚔️",  "name": "[CMD] ALL WEAPON",        "price": 139, "role_id": 1444190694674792592},
-    {"id": "item9",  "emoji": "💻",  "name": "[CMD] ลบประวัติ CMD",      "price": 79,  "role_id": 1444191270372114552},
-    {"id": "item10", "emoji": "🚀",  "name": "[CMD] FRAME SYNC",         "price": 120,  "role_id": 1449653924209492098},
-    {"id": "item11", "emoji": "💻",  "name": "[CMD] REBORNKILL",         "price": 159,  "role_id": 1449657396497743883},
-    {"id": "item12", "emoji": "💻",  "name": "[CMD] 60 7ET 8ACK",        "price": 159,  "role_id": 1449658031301333153},
-    {"id": "item13", "emoji": "🎧",  "name": "[RESHADE] SUNKISSED",        "price": 25,  "role_id": 1431278653760737340},
-    {"id": "item14", "emoji": "🌃",  "name": "[RESHADE] MAGICEYE",         "price": 25,  "role_id": 1431231640058990652},
-    {"id": "item15", "emoji": "🌷",  "name": "[RESHADE] REALLIVE",         "price": 25,  "role_id": 1431204938373140513},
-    {"id": "item16", "emoji": "🏞️",  "name": "[RESHADE] FALLING",          "price": 25,  "role_id": 1444192569754910770},
-    {"id": "item17", "emoji": "⚡",  "name": "[RESHADE] X TOGYO MODS",         "price": 35,  "role_id": 1448217708146589747},
-    {"id": "item18", "emoji": "❓",  "name": "[RESHADE] TONE DARK",         "price": 35,  "role_id": 1448197995701993543},
-    {"id": "item19", "emoji": "🍰",  "name": "[RESHADE] PEKKY",         "price": 40,  "role_id": 1448263468355424298},
-    {"id": "item20",  "emoji": "💎",  "name": "[RESHADE] REALISTICV1",       "price": 25,  "role_id": 1431250097135419505},
-    {"id": "item21",  "emoji": "🌈",  "name": "[RESHADE] REALISTICV2",       "price": 25,  "role_id": 1431234346202959973},
-    {"id": "item22",  "emoji": "🔥",  "name": "[RESHADE] REALISTICV3",       "price": 25,  "role_id": 1431249584054734929},
-    {"id": "item23", "emoji": "🎀",  "name": "[RESHADE] REALISTICV4",          "price": 35,  "role_id": 1448142438131699722},
-    {"id": "item24", "emoji": "🌌",  "name": "[RESHADE] REALISTICV5",          "price": 35,  "role_id": 1448171343022526574},
-    {"id": "item25", "emoji": "🍀",  "name": "[RESHADE] REALISTICV6",          "price": 35,  "role_id": 1448171385942966392},
-    {"id": "item26", "emoji": "🚣",  "name": "[RESHADE] REALISTIC𝚅7",         "price": 35,  "role_id": 1448313586915999755},
-    {"id": "item27", "emoji": "🍕",  "name": "[RESHADE] REALISTIC𝚅8",         "price": 35,  "role_id": 1449643401908584490},
-    {"id": "item28", "emoji": "🕵️‍♂️",  "name": "[RESHADE] REALISTIC𝚅9",         "price": 35,  "role_id": 1449723125381206158},
-    {"id": "item29", "emoji": "🐤",  "name": "[RESHADE] REALISTIC𝚅10",         "price": 35,  "role_id": 1449723195740520459},
-    {"id": "item30", "emoji": "🍯",  "name": "[RESHADE] REALISTIC𝚅11",         "price": 35,  "role_id": 1449723197074440283},
-    {"id": "item31", "emoji": "🦋",  "name": "[RESHADE] MMJ",         "price": 35,  "role_id": 1449724755086147696},
-    {"id": "item32", "emoji": "🐇",  "name": "[RESHADE] 𝖡𝖠𝖡𝖸 𝖦",         "price": 40,  "role_id": 1449725249036877874},
-    {"id": "item33", "emoji": "🍥",  "name": "[RESHADE] ✦colour﹒₊˚੭",         "price": 40,  "role_id": 1449726152456409139},
+    {"id": "item8",  "emoji": "⚔️",  "name": "[CMD] ALL WEAPON", "price": 139, "role_id": 1444190694674792592},
+    {"id": "item9",  "emoji": "💻",  "name": "[CMD] ลบประวัติ CMD", "price": 79,  "role_id": 1444191270372114552},
+    {"id": "item10", "emoji": "🚀",  "name": "[CMD] FRAME SYNC", "price": 120,  "role_id": 1449653924209492098},
+    {"id": "item11", "emoji": "💻",  "name": "[CMD] REBORNKILL", "price": 159,  "role_id": 1449657396497743883},
+    {"id": "item12", "emoji": "💻",  "name": "[CMD] 60 7ET 8ACK", "price": 159,  "role_id": 1449658031301333153},
+    {"id": "item13", "emoji": "🎧",  "name": "[RESHADE] SUNKISSED", "price": 25,  "role_id": 1431278653760737340},
+    {"id": "item14", "emoji": "🌃",  "name": "[RESHADE] MAGICEYE", "price": 25,  "role_id": 1431231640058990652},
+    {"id": "item15", "emoji": "🌷",  "name": "[RESHADE] REALLIVE", "price": 25,  "role_id": 1431204938373140513},
+    {"id": "item16", "emoji": "🏞️",  "name": "[RESHADE] FALLING", "price": 25,  "role_id": 1444192569754910770},
+    {"id": "item17", "emoji": "⚡",  "name": "[RESHADE] X TOGYO MODS", "price": 35,  "role_id": 1448217708146589747},
+    {"id": "item18", "emoji": "❓",  "name": "[RESHADE] TONE DARK", "price": 35,  "role_id": 1448197995701993543},
+    {"id": "item19", "emoji": "🍰",  "name": "[RESHADE] PEKKY", "price": 40,  "role_id": 1448263468355424298},
+    {"id": "item20",  "emoji": "💎",  "name": "[RESHADE] REALISTICV1", "price": 25,  "role_id": 1431250097135419505},
+    {"id": "item21",  "emoji": "🌈",  "name": "[RESHADE] REALISTICV2", "price": 25,  "role_id": 1431234346202959973},
+    {"id": "item22",  "emoji": "🔥",  "name": "[RESHADE] REALISTICV3", "price": 25,  "role_id": 1431249584054734929},
+    {"id": "item23", "emoji": "🎀",  "name": "[RESHADE] REALISTICV4", "price": 35,  "role_id": 1448142438131699722},
+    {"id": "item24", "emoji": "🌌",  "name": "[RESHADE] REALISTICV5", "price": 35,  "role_id": 1448171343022526574},
+    {"id": "item25", "emoji": "🍀",  "name": "[RESHADE] REALISTICV6", "price": 35,  "role_id": 1448171385942966392},
+    {"id": "item26", "emoji": "🚣",  "name": "[RESHADE] REALISTIC𝚅7", "price": 35,  "role_id": 1448313586915999755},
+    {"id": "item27", "emoji": "🍕",  "name": "[RESHADE] REALISTIC𝚅8", "price": 35,  "role_id": 1449643401908584490},
+    {"id": "item28", "emoji": "🕵️‍♂️",  "name": "[RESHADE] REALISTIC𝚅9", "price": 35,  "role_id": 1449723125381206158},
+    {"id": "item29", "emoji": "🐤",  "name": "[RESHADE] REALISTIC𝚅10", "price": 35,  "role_id": 1449723195740520459},
+    {"id": "item30", "emoji": "🍯",  "name": "[RESHADE] REALISTIC𝚅11", "price": 35,  "role_id": 1449723197074440283},
+    {"id": "item31", "emoji": "🦋",  "name": "[RESHADE] MMJ", "price": 35,  "role_id": 1449724755086147696},
+    {"id": "item32", "emoji": "🐇",  "name": "[RESHADE] 𝖡𝖠𝖡𝖸 𝖦", "price": 40,  "role_id": 1449725249036877874},
+    {"id": "item33", "emoji": "🍥",  "name": "[RESHADE] ✦colour﹒₊˚੭", "price": 40,  "role_id": 1449726152456409139},
 ]
 
 # =================================================================
@@ -196,10 +202,9 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # =================================================================
-# ⚙️ SYSTEM FUNCTIONS (แก้ใหม่: เพิ่ม clean_text + smart check)
+# ⚙️ SYSTEM FUNCTIONS
 # =================================================================
 
-# ฟังก์ชันล้างข้อความให้เหลือแต่ตัวอักษรสำคัญ (ตัดเว้นวรรค/จุด/อักขระพิเศษ)
 def clean_text(text):
     if not text: return ""
     return re.sub(r'[^a-zA-Z0-9ก-๙]', '', str(text)).lower()
@@ -242,7 +247,6 @@ async def restore_database_from_logs(bot):
     save_json(LOG_MSG_DB, msg_ids)
     print(f"✅ กู้คืนข้อมูลสำเร็จ {count} รายการ")
 
-# 🔥 ฟังก์ชันเช็คสลิปแบบใหม่ (อ่านออกทุกธนาคาร + โฟกัสผู้รับ)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
@@ -258,71 +262,102 @@ def check_slip_easyslip(image_url):
 
         if response.status_code == 200 and data['status'] == 200:
             slip = data['data']
-            
-            # 1. เช็คยอดเงิน
             raw_amount = slip.get('amount', {}).get('amount', 0)
             amount = float(raw_amount)
             if amount < MIN_AMOUNT: 
                 return False, 0, None, f"ยอดเงินต่ำกว่ากำหนด ({amount})"
             
-            # 2. เช็คชื่อผู้รับ (แบบละเอียด & Smart Match)
             receiver_info = slip.get('receiver', {})
-            
-            # ดึงชื่อจากหลายๆ field ที่เป็นไปได้
-            api_names = [
-                receiver_info.get('displayName'), # ชื่อที่เแสดง
-                receiver_info.get('name'),        # ชื่อจริง
-                receiver_info.get('account', {}).get('name') # ชื่อบัญชี
-            ]
-            
-            # ล้างค่าว่าง และทำความสะอาดตัวอักษร
+            api_names = [receiver_info.get('displayName'), receiver_info.get('name'), receiver_info.get('account', {}).get('name')]
             valid_api_names = [clean_text(n) for n in api_names if n]
-            
-            # ทำความสะอาดชื่อที่เราตั้งค่าไว้ด้วย
             cleaned_expected = [clean_text(n) for n in EXPECTED_NAMES]
-
-            # เปรียบเทียบความเหมือน
+            
             is_name_match = False
             for api_name in valid_api_names:
                 for expected in cleaned_expected:
-                    # เช็คว่ามีคำสำคัญอยู่ในชื่อหรือไม่ (เช่น "chanon" อยู่ใน "mrchanonk" หรือไม่)
                     if expected in api_name or api_name in expected:
                         is_name_match = True
                         break
                 if is_name_match: break
 
             if not is_name_match:
-                print(f"❌ Name Mismatch! API: {valid_api_names} vs Expected: {cleaned_expected}")
                 return False, 0, None, f"ชื่อบัญชีไม่ตรง ({receiver_info.get('displayName', 'Unknown')})"
 
-            # 3. เช็คเวลา (กันสลิปเก่า)
             d_str = str(slip.get('date', '')); t_str = str(slip.get('time', ''))
             dt_str = f"{d_str} {t_str}".replace("T", " ").split("+")[0].split(".")[0]
-            
             slip_dt = None
             for fmt in ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d %H:%M"]:
                 try: slip_dt = datetime.strptime(dt_str, fmt); break
                 except: continue
             
             if slip_dt:
-                # แก้ปี พ.ศ. -> ค.ศ.
                 if slip_dt.year > 2500: slip_dt = slip_dt.replace(year=slip_dt.year - 543)
-                
-                # เช็คเวลาปัจจุบัน
                 now = datetime.utcnow() + timedelta(hours=7)
                 diff = (now - slip_dt).total_seconds() / 60 
-                
                 if diff > 10: return False, 0, None, "สลิปหมดอายุ (เกิน 10 นาที)" 
                 if diff < -5: return False, 0, None, "เวลาในอนาคต (นาฬิกาไม่ตรง)"
-
-            # ผ่านทุกด่าน
             return True, amount, slip['transRef'], "OK"
-            
         else:
             return False, 0, None, data.get('message', 'อ่าน QR ไม่ได้ / ไม่ใช่สลิป')
-
     except Exception as e:
         return False, 0, None, f"System Error: {str(e)}"
+
+# 🔥 GIST: ระบบแก้ไฟล์อัจฉริยะ (วนลูปหาไฟล์สินค้าเอง)
+def update_gist_hwid(target_key, new_hwid):
+    try:
+        g = Github(GITHUB_TOKEN)
+        
+        # วนลูปเช็คสินค้าทุกตัวในร้าน
+        for product_name, link in PRODUCT_LINKS.items():
+            try:
+                parts = link.split('/')
+                current_gist_id = parts[4]
+                current_filename = parts[-1]
+            except: continue
+
+            try:
+                gist = g.get_gist(current_gist_id)
+                file = gist.files[current_filename]
+                content = file.content
+            except: continue
+
+            if target_key not in content: continue
+
+            new_lines = []
+            found = False
+            already_bind = False
+            
+            for line in content.splitlines():
+                clean_line = line.strip()
+                if not clean_line: continue
+                
+                parts_line = clean_line.split(',')
+                current_key_in_file = parts_line[0].strip()
+                
+                if current_key_in_file == target_key:
+                    found = True
+                    old_hwid = parts_line[1].strip() if len(parts_line) > 1 else ""
+                    
+                    if old_hwid == "":
+                        new_lines.append(f"{current_key_in_file},{new_hwid}")
+                    else:
+                        new_lines.append(clean_line)
+                        already_bind = True
+                else:
+                    new_lines.append(clean_line)
+            
+            if found:
+                if already_bind:
+                    return False, f"⚠️ คีย์นี้ถูกผูก HWID ไปแล้ว! ({product_name})"
+                
+                final_content = "\n".join(new_lines)
+                gist.edit(files={current_filename: discord.InputFileContent(final_content)})
+                return True, f"✅ **SUCCESS:** ผูก HWID เรียบร้อย!\nสินค้า: `{product_name}`"
+
+        return False, f"❌ ไม่พบคีย์ `{target_key}` ในระบบทุกสินค้า"
+
+    except Exception as e:
+        return False, f"GitHub Error: {str(e)}"
 
 # --- REDEEM LOGIC ---
 def fetch_available_key(pastebin_url):
@@ -361,10 +396,95 @@ async def verify_receipt(bot, receipt_id):
     return False, None, "Receipt Not Found"
 
 # =================================================================
-# 🎨 UI SYSTEM
+# 🎨 UI SYSTEM (ADMIN PANEL)
 # =================================================================
 
-# 🔥 1. สร้าง Modal สำหรับกรอกข้อมูลเสกเงิน
+# 1. กล่องกรอก HWID (เด้งขึ้นมาเมื่อกดปุ่ม Bind)
+class HwidInputModal(discord.ui.Modal, title="🔗 BIND HWID"):
+    def __init__(self, key):
+        super().__init__()
+        self.target_key = key
+        self.hwid = discord.ui.TextInput(label="ENTER HWID", placeholder="วาง HWID ของลูกค้าที่นี่", min_length=5)
+        self.add_item(self.hwid)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        hwid_val = self.hwid.value.strip()
+        success, msg = update_gist_hwid(self.target_key, hwid_val)
+        color = discord.Color.green() if success else discord.Color.red()
+        await interaction.followup.send(embed=discord.Embed(description=msg, color=color), ephemeral=True)
+
+# 2. ปุ่ม BIND HWID (อยู่ใต้ Embed รายละเอียดออเดอร์)
+class HwidActionView(discord.ui.View):
+    def __init__(self, key):
+        super().__init__(timeout=None)
+        self.key = key
+
+    @discord.ui.button(label="🔗 BIND HWID", style=discord.ButtonStyle.success)
+    async def bind_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(HwidInputModal(self.key))
+
+# 3. กล่องค้นหา Order (เด้งเมื่อกด Search)
+class OrderSearchModal(discord.ui.Modal, title="🔍 SEARCH ORDER"):
+    order_id = discord.ui.TextInput(label="RECEIPT ID", placeholder="#xxxxxx", min_length=3)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        target_oid = self.order_id.value.replace("#", "").strip().upper()
+        
+        # ค้นหาในห้อง Log แลกคีย์ (เพราะคีย์อยู่ที่นี่)
+        log_channel = interaction.guild.get_channel(REDEEM_LOG_ID)
+        if not log_channel:
+            return await interaction.followup.send("❌ หาห้อง Redeem Log ไม่เจอ", ephemeral=True)
+
+        found_data = None
+        async for msg in log_channel.history(limit=500):
+            if not msg.embeds: continue
+            embed = msg.embeds[0]
+            desc = embed.description or ""
+            
+            # ใช้ Regex ดึงข้อมูลจาก Log เก่า
+            if target_oid in desc:
+                key_match = re.search(r"KEY\s*=\s*(.+)", desc)
+                user_match = re.search(r"USER\s*=\s*(.+)", desc)
+                prod_match = re.search(r"PRODUCT\s*=\s*(.+)", desc)
+                
+                if key_match:
+                    found_data = {
+                        "key": key_match.group(1).strip(),
+                        "user": user_match.group(1).strip() if user_match else "Unknown",
+                        "product": prod_match.group(1).strip() if prod_match else "Unknown"
+                    }
+                    break
+        
+        if found_data:
+            res_embed = discord.Embed(title="🧾 ORDER DETAILS", color=CYBER_COLOR)
+            res_embed.description = (
+                f"```ini\n"
+                f"[ ORDER FOUND ]\n"
+                f"ID       = #{target_oid}\n"
+                f"USER     = {found_data['user']}\n"
+                f"PRODUCT  = {found_data['product']}\n"
+                f"KEY      = {found_data['key']}\n"
+                f"```"
+            )
+            await interaction.followup.send(embed=res_embed, view=HwidActionView(found_data['key']), ephemeral=True)
+        else:
+            await interaction.followup.send(f"❌ ไม่พบออเดอร์ `#{target_oid}` ในประวัติการแลกคีย์", ephemeral=True)
+
+# 4. ปุ่มหลักในหน้า Admin Panel
+class HwidManagerView(discord.ui.View):
+    def __init__(self): super().__init__(timeout=None)
+
+    @discord.ui.button(label="SEARCH ORDER", style=discord.ButtonStyle.primary, emoji="🔍", custom_id="admin_search_order")
+    async def search(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.administrator: return
+        await interaction.response.send_modal(OrderSearchModal())
+
+# =================================================================
+# 🎨 UI SYSTEM (SHOP & USER)
+# =================================================================
+
 class AddMoneyModal(discord.ui.Modal, title="💸 MANUAL ADD BALANCE"):
     target = discord.ui.TextInput(label="User ID or Tag", placeholder="เช่น 123456789 หรือ @laikatfl", min_length=1)
     amount = discord.ui.TextInput(label="Amount (THB)", placeholder="เช่น 100", min_length=1)
@@ -372,22 +492,17 @@ class AddMoneyModal(discord.ui.Modal, title="💸 MANUAL ADD BALANCE"):
     async def on_submit(self, interaction: discord.Interaction):
         if not interaction.user.guild_permissions.administrator:
             return await interaction.response.send_message("❌ **ACCESS DENIED**", ephemeral=True)
-
         try:
             raw_target = self.target.value
             user_id_match = re.search(r'\d+', raw_target)
             if not user_id_match:
                 return await interaction.response.send_message("❌ **INVALID USER:** ไม่พบ ID", ephemeral=True)
-            
             user_id = int(user_id_match.group())
             amount = float(self.amount.value)
-
             target_user = interaction.guild.get_member(user_id)
             target_name = target_user.name if target_user else f"Unknown ({user_id})"
-
             new_bal = update_money(user_id, amount, is_topup=True)
             await update_user_log(interaction.client, user_id)
-
             if log_channel := interaction.guild.get_channel(ADD_MONEY_LOG_ID):
                 embed = discord.Embed(title="🔧 MANUAL ADJUSTMENT | เพิ่มเงิน", color=discord.Color.green())
                 embed.description = (
@@ -404,9 +519,7 @@ class AddMoneyModal(discord.ui.Modal, title="💸 MANUAL ADD BALANCE"):
                 embed.set_footer(text="System Manual Adjustment")
                 embed.set_thumbnail(url=target_user.display_avatar.url if target_user else None)
                 await log_channel.send(embed=embed)
-
             await interaction.response.send_message(f"✅ เพิ่มเงิน `{amount} THB` ให้ <@{user_id}> สำเร็จ!", ephemeral=True)
-
         except ValueError:
             await interaction.response.send_message("❌ **ERROR:** ใส่จำนวนเงินเป็นตัวเลขเท่านั้น", ephemeral=True)
         except Exception as e:
@@ -754,69 +867,25 @@ async def create_airdrop(interaction: discord.Interaction, amount: float, winner
     await interaction.channel.send(content=content_msg, embed=embed, view=view)
     await interaction.response.send_message("✅ สร้างกิจกรรมเรียบร้อย!", ephemeral=True)
 
-# 👇 วางต่อจากคำสั่ง add_money (หรือสร้างใหม่ในกลุ่ม Admin Commands)
-@bot.tree.command(name="test_slip_system", description="[Admin] จำลองการทำงานระบบสลิป (Test Log & DB)")
+# คำสั่งใหม่: สร้างหน้าจอ HWID MANAGER
+@bot.tree.command(name="setup_hwid_panel", description="[Admin] สร้างหน้าจอจัดการ HWID")
 @app_commands.default_permissions(administrator=True)
-async def test_slip_system(interaction: discord.Interaction):
-    # ตรวจสอบว่าตั้งค่าห้อง Log ถูกไหม
-    log_channel = interaction.guild.get_channel(SLIP_LOG_ID)
-    if not log_channel:
-        return await interaction.response.send_message(f"❌ หาห้อง Log (ID: {SLIP_LOG_ID}) ไม่เจอ!", ephemeral=True)
-
-    await interaction.response.defer(ephemeral=True)
-
-    try:
-        # 1. จำลองข้อมูล (Mock Data)
-        fake_amount = 50.00
-        fake_ref = "TEST_" + str(uuid.uuid4())[:8]
-        # ใช้รูป Banner ร้านเป็นตัวอย่างสลิป
-        test_img_url = SHOP_BANNER_URL 
-        
-        # 2. จำลองการโหลดรูป (ส่วนที่มักจะมีปัญหา)
-        img_data = requests.get(test_img_url).content
-        
-        # 3. จำลองการเพิ่มเงินจริง
-        new_bal = update_money(interaction.user.id, fake_amount, is_topup=True)
-        await update_user_log(interaction.client, interaction.user.id)
-
-        # 4. จำลองการส่ง Log (Re-upload Image)
-        slip_file = discord.File(io.BytesIO(img_data), filename=f"test_slip_{fake_ref}.gif")
-        
-        log_embed = discord.Embed(title="🧪 TEST SLIP SYSTEM", description="**นี่คือการทดสอบระบบ ไม่ใช่ยอดจริง**", color=discord.Color.orange())
-        log_embed.add_field(name="User", value=interaction.user.name, inline=True)
-        log_embed.add_field(name="Amount", value=f"{fake_amount} THB", inline=True)
-        log_embed.add_field(name="Status", value="✅ Image Uploaded Success", inline=False)
-        log_embed.set_image(url=f"attachment://test_slip_{fake_ref}.gif")
-        
-        await log_channel.send(embed=log_embed, file=slip_file)
-
-        await interaction.followup.send(f"✅ **Test Completed!**\n- เงินเข้าตัวคุณ: {fake_amount} บาท\n- Log ถูกส่งไปที่ห้อง <#{SLIP_LOG_ID}>\n- กรุณาไปเช็คว่ารูปขึ้นไหม", ephemeral=True)
-
-    except Exception as e:
-        await interaction.followup.send(f"❌ **SYSTEM ERROR:** {e}", ephemeral=True)
-
-# =================================================================
-# 🚀 EVENTS & STARTUP
-# =================================================================
-
-@bot.event
-async def on_ready():
-    print(f"✅ SYSTEM ONLINE: {bot.user}")
-    load_db()
-    bot.add_view(MainShopView())
-    bot.add_view(DashboardView())
-    bot.add_view(RedeemView())
-    try: await bot.tree.sync()
-    except: pass
-
-@bot.tree.command(name="setup_dashboard", description="[Admin] Create Control Panel")
-@app_commands.default_permissions(administrator=True)
-async def setup_dashboard(interaction):
-    if interaction.channel_id != DASHBOARD_CMD_CHANNEL_ID: return
-    embed = discord.Embed(title="🎛️ CONTROL CENTER", description="Database & Logs Management System", color=discord.Color.orange())
-    embed.add_field(name="SYSTEM STATUS", value="```diff\n+ ONLINE\n+ LATENCY: 24ms```")
-    await interaction.channel.send(embed=embed, view=DashboardView())
-    await interaction.response.send_message("✅ Dashboard Created", ephemeral=True)
+async def setup_hwid_panel(interaction: discord.Interaction):
+    embed = discord.Embed(title="🎛️ HWID MANAGER CONSOLE", color=THEME_COLOR)
+    embed.description = (
+        "**SYSTEM STATUS:** `ONLINE` 🟢\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "**HOW TO USE:**\n"
+        "1. กดปุ่ม `🔍 SEARCH ORDER`\n"
+        "2. กรอกเลข Order (เช่น #A1B2C3)\n"
+        "3. ระบบจะแสดงข้อมูลคีย์ที่ลูกค้าได้รับ\n"
+        "4. กดปุ่ม `🔗 BIND HWID` เพื่อแก้ไฟล์ GitHub\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    )
+    embed.set_image(url="https://media.discordapp.net/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif")
+    
+    await interaction.channel.send(embed=embed, view=HwidManagerView())
+    await interaction.response.send_message("✅ Created Admin Panel", ephemeral=True)
 
 @bot.tree.command(name="setup_shop")
 async def setup_shop(interaction):
@@ -868,7 +937,6 @@ async def add_money(interaction, user: discord.Member, amount: float):
     embed = discord.Embed(description=f"✅ **ADDED** `{amount} THB` to {user.mention}\nNew Balance: `{new_bal} THB`", color=SUCCESS_COLOR)
     await interaction.response.send_message(embed=embed)
     
-    # ⚠️ ส่ง Log ไปห้อง ADD_MONEY_LOG_ID
     if log := bot.get_channel(ADD_MONEY_LOG_ID):
         await log.send(f"🔧 **[MANUAL ADJ]** {interaction.user.name} added {amount} to {user.name}")
 
@@ -877,11 +945,8 @@ async def on_message(message):
     if message.author.bot: return
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
         try:
-            # 🔥 1. ดาวน์โหลดรูปสลิปเก็บไว้ก่อน (กันรูปลบแล้วลิงก์เสีย)
             img_url = message.attachments[0].url
             img_data = requests.get(img_url).content
-            
-            # 🔥 2. เช็คสลิป
             success, amount, ref, txt = check_slip_easyslip(img_url)
             
             if success:
@@ -890,7 +955,6 @@ async def on_message(message):
                     await message.delete()
                     return
                 
-                # อัปเดตเงิน
                 new_bal = update_money(message.author.id, amount, is_topup=True)
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
@@ -900,11 +964,8 @@ async def on_message(message):
                 embed.set_thumbnail(url=message.author.display_avatar.url)
                 await message.channel.send(content=f"{message.author.mention}", embed=embed, delete_after=15)
                 
-                # 🔥 3. ส่ง Log เข้าห้องแอดมิน (แบบอัปโหลดไฟล์ใหม่)
                 if hist := bot.get_channel(SLIP_LOG_ID):
-                    # สร้างไฟล์จากข้อมูลที่โหลดมา
                     slip_file = discord.File(io.BytesIO(img_data), filename=f"slip_{ref}.jpg")
-                    
                     log_embed = discord.Embed(title="💳 SLIP VERIFIED | บันทึกการเติมเงิน", color=CYBER_COLOR)
                     log_embed.description = (
                         f"```ini\n"
@@ -918,10 +979,9 @@ async def on_message(message):
                         f"👤 **User:** {message.author.mention}"
                     )
                     log_embed.set_thumbnail(url=message.author.display_avatar.url)
-                    log_embed.set_image(url=f"attachment://slip_{ref}.jpg") # อ้างอิงไฟล์ที่อัปโหลด
+                    log_embed.set_image(url=f"attachment://slip_{ref}.jpg")
                     log_embed.set_footer(text="Auto-Verification System")
-                    
-                    await hist.send(embed=log_embed, file=slip_file) # ส่งทั้ง Embed และไฟล์รูป
+                    await hist.send(embed=log_embed, file=slip_file)
                 
                 await message.delete()
             else:
