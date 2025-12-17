@@ -24,15 +24,15 @@ EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
 # --------------------------------------------------------
 
 # 1. ห้องหน้าร้าน & ลูกค้าใช้งาน
-SHOP_CHANNEL_ID = 1416797606180552714      # ห้องพิมพ์ /setup_shop (หน้าร้าน)
-SLIP_CHANNEL_ID = 1416797464350167090      # ห้องลูกค้าส่งสลิปโอนเงิน
-REDEEM_CHANNEL_ID = 1449749949918089289    # ห้องพิมพ์ /setup_redeem (แลกคีย์)
+SHOP_CHANNEL_ID = 1416797606180552714       # ห้องพิมพ์ /setup_shop (หน้าร้าน)
+SLIP_CHANNEL_ID = 1416797464350167090       # ห้องลูกค้าส่งสลิปโอนเงิน
+REDEEM_CHANNEL_ID = 1449749949918089289     # ห้องพิมพ์ /setup_redeem (แลกคีย์)
 
 # 2. ห้อง LOGS หลังบ้าน (แอดมิน)
-PURCHASE_LOG_ID = 1450487180416778321      # 🔒:ประวัติการซื้อ (บิลสั่งซื้อ / ใช้เช็คแลกคีย์)
-SLIP_LOG_ID = 1444390933297631512          # 🔒:ประวัติสลีปโอนเงิน (เก็บรูปสลิป)
-ADD_MONEY_LOG_ID = 1450470356979683328     # 🔒:ประวัติเพิ่มเงิน (Log เสกเงิน/Airdrop)
-REDEEM_LOG_ID = 1450457258663215146        # 🔒:ประวัติแลกคีย์ (Log การดึงคีย์)
+PURCHASE_LOG_ID = 1450487180416778321       # 🔒:ประวัติการซื้อ (บิลสั่งซื้อ / ใช้เช็คแลกคีย์)
+SLIP_LOG_ID = 1444390933297631512           # 🔒:ประวัติสลีปโอนเงิน (เก็บรูปสลิป)
+ADD_MONEY_LOG_ID = 1450470356979683328      # 🔒:ประวัติเพิ่มเงิน (Log เสกเงิน/Airdrop)
+REDEEM_LOG_ID = 1450457258663215146         # 🔒:ประวัติแลกคีย์ (Log การดึงคีย์)
 
 # 3. ห้อง DATABASE & DASHBOARD
 DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423 # ห้องพิมพ์ /setup_dashboard
@@ -41,24 +41,25 @@ BALANCE_LOG_ID = 1444662604940181667           # 🔒:ห้องเก็บ�
 # --------------------------------------------------------
 
 # Assets & Theme
-THEME_COLOR = 0x2b2d31  
-ACCENT_COLOR = 0x5865F2 
-SUCCESS_COLOR = 0x57F287
-ERROR_COLOR = 0xED4245
-TOPUP_COLOR = 0x00f7ff 
-CYBER_COLOR = 0x00f7ff
+THEME_COLOR = 0x2b2d31   
+ACCENT_COLOR = 0x5865F2  
+SUCCESS_COLOR = 0x57F287 
+ERROR_COLOR = 0xED4245 
+TOPUP_COLOR = 0x00f7ff  
+CYBER_COLOR = 0x00f7ff 
 
 QR_CODE_URL = 'https://ik.imagekit.io/ex9p4t2gi/IMG_6124.jpg'
 SHOP_BANNER_URL = 'https://media.discordapp.net/attachments/1303249085347926058/1444212368937586698/53ad0cc3373bbe0ea51dd878241952c6.gif' 
 SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/1444077217230491731/Fire_Force_Sho_Kusakabe_GIF.gif'
 
+# 🔥 ชื่อผู้รับเงิน (บัญชีของคุณ) ที่อนุญาตให้ผ่าน
+# ใส่แค่คีย์เวิร์ดสำคัญ ไม่ต้องใส่คำนำหน้า
 EXPECTED_NAMES = [
-    'ชานนท์ ขันทอง',      'นายชานนท์ ขันทอง',    'นาย ชานนท์ ขันทอง',
-    'ชานนท์ ข',          'นายชานนท์ ข',        'นาย ชานนท์ ข',
-    'ชานนท์ ขัน',        'นายชานนท์ ขัน',
-    'chanon khantong',   'mr. chanon khantong', 'mr chanon khantong',
-    'chanon k',          'mr. chanon k',        'mr chanon k',
-    'chanon kh',         'chanon khan'
+    'ชานนท์ ขันทอง',   # ภาษาไทยเต็ม
+    'ชานนท์',         # ภาษาไทยบางส่วน (เผื่อตัดนามสกุล)
+    'chanon khantong', # อังกฤษเต็ม
+    'chanon',          # อังกฤษบางส่วน (เผื่อมาแค่ชื่อต้น)
+    'khantong'         # นามสกุลอย่างเดียว
 ]
 MIN_AMOUNT = 1.00
 
@@ -195,8 +196,13 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # =================================================================
-# ⚙️ SYSTEM FUNCTIONS
+# ⚙️ SYSTEM FUNCTIONS (แก้ใหม่: เพิ่ม clean_text + smart check)
 # =================================================================
+
+# ฟังก์ชันล้างข้อความให้เหลือแต่ตัวอักษรสำคัญ (ตัดเว้นวรรค/จุด/อักขระพิเศษ)
+def clean_text(text):
+    if not text: return ""
+    return re.sub(r'[^a-zA-Z0-9ก-๙]', '', str(text)).lower()
 
 async def restore_database_from_logs(bot):
     print("🔄 Syncing database from Cyberpunk Logs...")
@@ -236,47 +242,87 @@ async def restore_database_from_logs(bot):
     save_json(LOG_MSG_DB, msg_ids)
     print(f"✅ กู้คืนข้อมูลสำเร็จ {count} รายการ")
 
+# 🔥 ฟังก์ชันเช็คสลิปแบบใหม่ (อ่านออกทุกธนาคาร + โฟกัสผู้รับ)
 def check_slip_easyslip(image_url):
     print(f"Checking slip: {image_url}")
     try:
         img_data = requests.get(image_url).content
         files = {'file': ('slip.jpg', io.BytesIO(img_data), 'image/jpeg')}
+        
         response = requests.post(
             "https://developer.easyslip.com/api/v1/verify",
             headers={'Authorization': f'Bearer {EASYSLIP_API_KEY}'},
             files=files, timeout=15
         )
         data = response.json()
+
         if response.status_code == 200 and data['status'] == 200:
             slip = data['data']
-            raw_amount = slip['amount']
-            if isinstance(raw_amount, dict): raw_amount = raw_amount.get('amount', 0)
-            amount = float(raw_amount)
-            if amount < MIN_AMOUNT: return False, 0, None, f"Amount too low ({amount})"
             
-            receiver = slip.get('receiver', {}).get('displayName') or slip.get('receiver', {}).get('name') or ""
-            receiver = receiver.strip()
-            if receiver:
-                clean_receiver = " ".join(receiver.lower().split())
-                is_name_valid = any(" ".join(n.lower().split()) in clean_receiver for n in EXPECTED_NAMES)
-                if not is_name_valid: return False, 0, None, f"Wrong Receiver: {receiver}"
+            # 1. เช็คยอดเงิน
+            raw_amount = slip.get('amount', {}).get('amount', 0)
+            amount = float(raw_amount)
+            if amount < MIN_AMOUNT: 
+                return False, 0, None, f"ยอดเงินต่ำกว่ากำหนด ({amount})"
+            
+            # 2. เช็คชื่อผู้รับ (แบบละเอียด & Smart Match)
+            receiver_info = slip.get('receiver', {})
+            
+            # ดึงชื่อจากหลายๆ field ที่เป็นไปได้
+            api_names = [
+                receiver_info.get('displayName'), # ชื่อที่เแสดง
+                receiver_info.get('name'),        # ชื่อจริง
+                receiver_info.get('account', {}).get('name') # ชื่อบัญชี
+            ]
+            
+            # ล้างค่าว่าง และทำความสะอาดตัวอักษร
+            valid_api_names = [clean_text(n) for n in api_names if n]
+            
+            # ทำความสะอาดชื่อที่เราตั้งค่าไว้ด้วย
+            cleaned_expected = [clean_text(n) for n in EXPECTED_NAMES]
 
+            # เปรียบเทียบความเหมือน
+            is_name_match = False
+            for api_name in valid_api_names:
+                for expected in cleaned_expected:
+                    # เช็คว่ามีคำสำคัญอยู่ในชื่อหรือไม่ (เช่น "chanon" อยู่ใน "mrchanonk" หรือไม่)
+                    if expected in api_name or api_name in expected:
+                        is_name_match = True
+                        break
+                if is_name_match: break
+
+            if not is_name_match:
+                print(f"❌ Name Mismatch! API: {valid_api_names} vs Expected: {cleaned_expected}")
+                return False, 0, None, f"ชื่อบัญชีไม่ตรง ({receiver_info.get('displayName', 'Unknown')})"
+
+            # 3. เช็คเวลา (กันสลิปเก่า)
             d_str = str(slip.get('date', '')); t_str = str(slip.get('time', ''))
             dt_str = f"{d_str} {t_str}".replace("T", " ").split("+")[0].split(".")[0]
+            
             slip_dt = None
-            for fmt in ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d %H:%M", "%d/%m/%Y %H:%M"]:
+            for fmt in ["%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d %H:%M"]:
                 try: slip_dt = datetime.strptime(dt_str, fmt); break
                 except: continue
             
             if slip_dt:
+                # แก้ปี พ.ศ. -> ค.ศ.
                 if slip_dt.year > 2500: slip_dt = slip_dt.replace(year=slip_dt.year - 543)
+                
+                # เช็คเวลาปัจจุบัน
                 now = datetime.utcnow() + timedelta(hours=7)
-                diff = (now - slip_dt).total_seconds() / 60
-                if diff > 10: return False, 0, None, "Slip Expired (>10 min)" 
-                if diff < -5: return False, 0, None, "Invalid Future Time"
+                diff = (now - slip_dt).total_seconds() / 60 
+                
+                if diff > 10: return False, 0, None, "สลิปหมดอายุ (เกิน 10 นาที)" 
+                if diff < -5: return False, 0, None, "เวลาในอนาคต (นาฬิกาไม่ตรง)"
+
+            # ผ่านทุกด่าน
             return True, amount, slip['transRef'], "OK"
-        else: return False, 0, None, data.get('message', 'Check Failed')
-    except Exception as e: return False, 0, None, f"Error: {str(e)}"
+            
+        else:
+            return False, 0, None, data.get('message', 'อ่าน QR ไม่ได้ / ไม่ใช่สลิป')
+
+    except Exception as e:
+        return False, 0, None, f"System Error: {str(e)}"
 
 # --- REDEEM LOGIC ---
 def fetch_available_key(pastebin_url):
@@ -815,6 +861,17 @@ async def setup_redeem(interaction):
     await interaction.channel.send(embed=embed, view=RedeemView())
     await interaction.response.send_message("✅ Redeem Panel Created", ephemeral=True)
 
+@bot.tree.command(name="add_money")
+async def add_money(interaction, user: discord.Member, amount: float):
+    new_bal = update_money(user.id, amount, is_topup=True)
+    await update_user_log(interaction.client, user.id)
+    embed = discord.Embed(description=f"✅ **ADDED** `{amount} THB` to {user.mention}\nNew Balance: `{new_bal} THB`", color=SUCCESS_COLOR)
+    await interaction.response.send_message(embed=embed)
+    
+    # ⚠️ ส่ง Log ไปห้อง ADD_MONEY_LOG_ID
+    if log := bot.get_channel(ADD_MONEY_LOG_ID):
+        await log.send(f"🔧 **[MANUAL ADJ]** {interaction.user.name} added {amount} to {user.name}")
+
 @bot.event
 async def on_message(message):
     if message.author.bot: return
@@ -838,7 +895,6 @@ async def on_message(message):
                 save_used_slip(ref)
                 await update_user_log(bot, message.author.id)
                 
-                # แจ้งเตือนลูกค้า
                 embed = discord.Embed(title="✅ TOPUP SUCCESSFUL", color=SUCCESS_COLOR)
                 embed.description = f"```ini\n[ RECEIPT ]\nAMOUNT  = {amount:.2f} THB\nBALANCE = {new_bal:.2f} THB\nREF     = {ref}```"
                 embed.set_thumbnail(url=message.author.display_avatar.url)
@@ -884,4 +940,3 @@ def load_db():
 
 server_on()
 bot.run(os.getenv('TOKEN'))
-
