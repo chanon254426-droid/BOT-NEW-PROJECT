@@ -11,7 +11,6 @@ import uuid
 import asyncio
 from datetime import datetime, timedelta
 from myserver import server_on
-# 👇 ต้องลงไลบรารี่เพิ่ม: pip install PyGithub
 from github import Github 
 
 # =================================================================
@@ -1007,3 +1006,4 @@ async def sync(ctx):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
+
