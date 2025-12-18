@@ -32,8 +32,8 @@ GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 # 🔥 [สำคัญ] ใส่ ID ห้องที่โปรแกรม GHOSTX ส่ง Log Login เข้ามา
 LISTEN_CHANNELS = [
     1434154279068762116,  # ID ห้อง LOG-CMD-REBORNKILL
-    222222222222222222,  # ID ห้อง LOG-CMD-NEWCLEAN
-    333333333333333333   # ID ห้อง LOG-CMD-ALLWEAPON
+    1450130826837754091,  # ID ห้อง LOG-CMD-NEWCLEAN
+    1450130960053047347   # ID ห้อง LOG-CMD-ALLWEAPON
 ]
 
 # 1. ห้องหน้าร้าน & ลูกค้าใช้งาน
@@ -1165,3 +1165,4 @@ async def sync(ctx):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
+
