@@ -21,12 +21,12 @@ DISCORD_BOT_TOKEN = os.environ.get('TOKEN')
 EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
 
 # --------------------------------------------------------
-# 🐱 GITHUB CONFIG (ใส่ Token อย่างเดียวพอ)
+# 🐱 GITHUB CONFIG
 # --------------------------------------------------------
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 
 # --------------------------------------------------------
-# 🔑 ZONE: ตั้งค่า ID ห้อง (ใส่เลขห้องจริงที่นี่)
+# 🔑 ZONE: ตั้งค่า ID ห้อง
 # --------------------------------------------------------
 
 # 1. ห้องหน้าร้าน & ลูกค้าใช้งาน
@@ -35,14 +35,14 @@ SLIP_CHANNEL_ID = 1416797464350167090       # ห้องลูกค้าส�
 REDEEM_CHANNEL_ID = 1449749949918089289     # ห้องพิมพ์ /setup_redeem (แลกคีย์)
 
 # 2. ห้อง LOGS หลังบ้าน (แอดมิน)
-PURCHASE_LOG_ID = 1450487180416778321       # 🔒:ประวัติการซื้อ (บิลสั่งซื้อ / ใช้เช็คแลกคีย์)
-SLIP_LOG_ID = 1444390933297631512           # 🔒:ประวัติสลีปโอนเงิน (เก็บรูปสลิป)
-ADD_MONEY_LOG_ID = 1450470356979683328      # 🔒:ประวัติเพิ่มเงิน (Log เสกเงิน/Airdrop)
-REDEEM_LOG_ID = 1450457258663215146         # 🔒:ประวัติแลกคีย์ (Log การดึงคีย์) ⚠️ สำคัญสำหรับการ Search
+PURCHASE_LOG_ID = 1450487180416778321       # 🔒:ประวัติการซื้อ
+SLIP_LOG_ID = 1444390933297631512           # 🔒:ประวัติสลีปโอนเงิน
+ADD_MONEY_LOG_ID = 1450470356979683328      # 🔒:ประวัติเพิ่มเงิน
+REDEEM_LOG_ID = 1450457258663215146         # 🔒:ประวัติแลกคีย์ (Log การดึงคีย์)
 
 # 3. ห้อง DATABASE & DASHBOARD
 DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423 # ห้องพิมพ์ /setup_dashboard
-BALANCE_LOG_ID = 1444662604940181667           # 🔒:ห้องเก็บยอดเงินรวม (Database ยอดเงิน)
+BALANCE_LOG_ID = 1444662604940181667           # 🔒:ห้องเก็บยอดเงินรวม
 
 # --------------------------------------------------------
 
@@ -76,41 +76,50 @@ PRODUCT_LINKS = {
     "[CMD] 60 7ET 8ACK": "https://gist.githubusercontent.com/chanon254426-droid/5c41a78a958cb41c26a6654a66486f0a/raw/hogetback.txt",
 }
 
-# สินค้า
+# =================================================================
+# 🛍️ PRODUCTS DATA (เพิ่มหมวดหมู่ Category)
+# =================================================================
 PRODUCTS = [
-    {"id": "item1", "emoji": "🏆",  "name": "VVIP [ยศทั้งร้าน]🏆", "price": 599,  "role_id": 1449658582244262041},
-    {"id": "item2",  "emoji": "⭐",  "name": "DONATE", "price": 89,  "role_id": 1431279741440364625},
-    {"id": "item3", "emoji": "🎮",  "name": "BOOST FPS", "price": 99,  "role_id": 1432010188340199504},
-    {"id": "item4",  "emoji": "👻",  "name": "MODS DEVOUR", "price": 120, "role_id": 1432064283767738571},
-    {"id": "item5", "emoji": "🚧",  "name": "TOGYO MOD", "price": 59,  "role_id": 1448142708286947449},
-    {"id": "item6",  "emoji": "🗑️",  "name": "ลบประวัติรันโปรแกรม","price": 49,  "role_id": 1444191566838370365},
-    {"id": "item7",  "emoji": "👑",  "name": "[CMD] SETTING PREMIUM", "price": 169, "role_id": 1419373724653588540},
-    {"id": "item8",  "emoji": "⚔️",  "name": "[CMD] ALL WEAPON", "price": 139, "role_id": 1444190694674792592},
-    {"id": "item9",  "emoji": "💻",  "name": "[CMD] ลบประวัติ CMD", "price": 79,  "role_id": 1444191270372114552},
-    {"id": "item10", "emoji": "🚀",  "name": "[CMD] FRAME SYNC", "price": 120,  "role_id": 1449653924209492098},
-    {"id": "item11", "emoji": "💻",  "name": "[CMD] REBORNKILL", "price": 159,  "role_id": 1449657396497743883},
-    {"id": "item12", "emoji": "💻",  "name": "[CMD] 60 7ET 8ACK", "price": 159,  "role_id": 1449658031301333153},
-    {"id": "item13", "emoji": "🎧",  "name": "[RESHADE] SUNKISSED", "price": 25,  "role_id": 1431278653760737340},
-    {"id": "item14", "emoji": "🌃",  "name": "[RESHADE] MAGICEYE", "price": 25,  "role_id": 1431231640058990652},
-    {"id": "item15", "emoji": "🌷",  "name": "[RESHADE] REALLIVE", "price": 25,  "role_id": 1431204938373140513},
-    {"id": "item16", "emoji": "🏞️",  "name": "[RESHADE] FALLING", "price": 25,  "role_id": 1444192569754910770},
-    {"id": "item17", "emoji": "⚡",  "name": "[RESHADE] X TOGYO MODS", "price": 35,  "role_id": 1448217708146589747},
-    {"id": "item18", "emoji": "❓",  "name": "[RESHADE] TONE DARK", "price": 35,  "role_id": 1448197995701993543},
-    {"id": "item19", "emoji": "🍰",  "name": "[RESHADE] PEKKY", "price": 40,  "role_id": 1448263468355424298},
-    {"id": "item20",  "emoji": "💎",  "name": "[RESHADE] REALISTICV1", "price": 25,  "role_id": 1431250097135419505},
-    {"id": "item21",  "emoji": "🌈",  "name": "[RESHADE] REALISTICV2", "price": 25,  "role_id": 1431234346202959973},
-    {"id": "item22",  "emoji": "🔥",  "name": "[RESHADE] REALISTICV3", "price": 25,  "role_id": 1431249584054734929},
-    {"id": "item23", "emoji": "🎀",  "name": "[RESHADE] REALISTICV4", "price": 35,  "role_id": 1448142438131699722},
-    {"id": "item24", "emoji": "🌌",  "name": "[RESHADE] REALISTICV5", "price": 35,  "role_id": 1448171343022526574},
-    {"id": "item25", "emoji": "🍀",  "name": "[RESHADE] REALISTICV6", "price": 35,  "role_id": 1448171385942966392},
-    {"id": "item26", "emoji": "🚣",  "name": "[RESHADE] REALISTIC𝚅7", "price": 35,  "role_id": 1448313586915999755},
-    {"id": "item27", "emoji": "🍕",  "name": "[RESHADE] REALISTIC𝚅8", "price": 35,  "role_id": 1449643401908584490},
-    {"id": "item28", "emoji": "🕵️‍♂️",  "name": "[RESHADE] REALISTIC𝚅9", "price": 35,  "role_id": 1449723125381206158},
-    {"id": "item29", "emoji": "🐤",  "name": "[RESHADE] REALISTIC𝚅10", "price": 35,  "role_id": 1449723195740520459},
-    {"id": "item30", "emoji": "🍯",  "name": "[RESHADE] REALISTIC𝚅11", "price": 35,  "role_id": 1449723197074440283},
-    {"id": "item31", "emoji": "🦋",  "name": "[RESHADE] MMJ", "price": 35,  "role_id": 1449724755086147696},
-    {"id": "item32", "emoji": "🐇",  "name": "[RESHADE] 𝖡𝖠𝖡𝖸 𝖦", "price": 40,  "role_id": 1449725249036877874},
-    {"id": "item33", "emoji": "🍥",  "name": "[RESHADE] ✦colour﹒₊˚੭", "price": 40,  "role_id": 1449726152456409139},
+    # หมวด: VIP & DONATE
+    {"id": "item1", "emoji": "🏆",  "name": "VVIP [ยศทั้งร้าน]🏆", "price": 599,  "role_id": 1449658582244262041, "category": "🏆 Rank & Donate"},
+    {"id": "item2",  "emoji": "⭐",  "name": "DONATE", "price": 89,  "role_id": 1431279741440364625, "category": "🏆 Rank & Donate"},
+    
+    # หมวด: BOOST & MODS
+    {"id": "item3", "emoji": "🎮",  "name": "BOOST FPS", "price": 99,  "role_id": 1432010188340199504, "category": "🎮 Boost & Mods"},
+    {"id": "item4",  "emoji": "👻",  "name": "MODS DEVOUR", "price": 120, "role_id": 1432064283767738571, "category": "🎮 Boost & Mods"},
+    {"id": "item5", "emoji": "🚧",  "name": "TOGYO MOD", "price": 59,  "role_id": 1448142708286947449, "category": "🎮 Boost & Mods"},
+    
+    # หมวด: CMD / SCRIPTS
+    {"id": "item6",  "emoji": "🗑️",  "name": "ลบประวัติรันโปรแกรม","price": 49,  "role_id": 1444191566838370365, "category": "💻 CMD Scripts"},
+    {"id": "item7",  "emoji": "👑",  "name": "[CMD] SETTING PREMIUM", "price": 169, "role_id": 1419373724653588540, "category": "💻 CMD Scripts"},
+    {"id": "item8",  "emoji": "⚔️",  "name": "[CMD] ALL WEAPON", "price": 139, "role_id": 1444190694674792592, "category": "💻 CMD Scripts"},
+    {"id": "item9",  "emoji": "💻",  "name": "[CMD] ลบประวัติ CMD", "price": 79,  "role_id": 1444191270372114552, "category": "💻 CMD Scripts"},
+    {"id": "item10", "emoji": "🚀",  "name": "[CMD] FRAME SYNC", "price": 120,  "role_id": 1449653924209492098, "category": "💻 CMD Scripts"},
+    {"id": "item11", "emoji": "💻",  "name": "[CMD] REBORNKILL", "price": 159,  "role_id": 1449657396497743883, "category": "💻 CMD Scripts"},
+    {"id": "item12", "emoji": "💻",  "name": "[CMD] 60 7ET 8ACK", "price": 159,  "role_id": 1449658031301333153, "category": "💻 CMD Scripts"},
+    
+    # หมวด: RESHADE
+    {"id": "item13", "emoji": "🎧",  "name": "[RESHADE] SUNKISSED", "price": 25,  "role_id": 1431278653760737340, "category": "🎨 ReShade"},
+    {"id": "item14", "emoji": "🌃",  "name": "[RESHADE] MAGICEYE", "price": 25,  "role_id": 1431231640058990652, "category": "🎨 ReShade"},
+    {"id": "item15", "emoji": "🌷",  "name": "[RESHADE] REALLIVE", "price": 25,  "role_id": 1431204938373140513, "category": "🎨 ReShade"},
+    {"id": "item16", "emoji": "🏞️",  "name": "[RESHADE] FALLING", "price": 25,  "role_id": 1444192569754910770, "category": "🎨 ReShade"},
+    {"id": "item17", "emoji": "⚡",  "name": "[RESHADE] X TOGYO MODS", "price": 35,  "role_id": 1448217708146589747, "category": "🎨 ReShade"},
+    {"id": "item18", "emoji": "❓",  "name": "[RESHADE] TONE DARK", "price": 35,  "role_id": 1448197995701993543, "category": "🎨 ReShade"},
+    {"id": "item19", "emoji": "🍰",  "name": "[RESHADE] PEKKY", "price": 40,  "role_id": 1448263468355424298, "category": "🎨 ReShade"},
+    {"id": "item20",  "emoji": "💎",  "name": "[RESHADE] REALISTICV1", "price": 25,  "role_id": 1431250097135419505, "category": "🎨 ReShade"},
+    {"id": "item21",  "emoji": "🌈",  "name": "[RESHADE] REALISTICV2", "price": 25,  "role_id": 1431234346202959973, "category": "🎨 ReShade"},
+    {"id": "item22",  "emoji": "🔥",  "name": "[RESHADE] REALISTICV3", "price": 25,  "role_id": 1431249584054734929, "category": "🎨 ReShade"},
+    {"id": "item23", "emoji": "🎀",  "name": "[RESHADE] REALISTICV4", "price": 35,  "role_id": 1448142438131699722, "category": "🎨 ReShade"},
+    {"id": "item24", "emoji": "🌌",  "name": "[RESHADE] REALISTICV5", "price": 35,  "role_id": 1448171343022526574, "category": "🎨 ReShade"},
+    {"id": "item25", "emoji": "🍀",  "name": "[RESHADE] REALISTICV6", "price": 35,  "role_id": 1448171385942966392, "category": "🎨 ReShade"},
+    {"id": "item26", "emoji": "🚣",  "name": "[RESHADE] REALISTIC𝚅7", "price": 35,  "role_id": 1448313586915999755, "category": "🎨 ReShade"},
+    {"id": "item27", "emoji": "🍕",  "name": "[RESHADE] REALISTIC𝚅8", "price": 35,  "role_id": 1449643401908584490, "category": "🎨 ReShade"},
+    {"id": "item28", "emoji": "🕵️‍♂️",  "name": "[RESHADE] REALISTIC𝚅9", "price": 35,  "role_id": 1449723125381206158, "category": "🎨 ReShade"},
+    {"id": "item29", "emoji": "🐤",  "name": "[RESHADE] REALISTIC𝚅10", "price": 35,  "role_id": 1449723195740520459, "category": "🎨 ReShade"},
+    {"id": "item30", "emoji": "🍯",  "name": "[RESHADE] REALISTIC𝚅11", "price": 35,  "role_id": 1449723197074440283, "category": "🎨 ReShade"},
+    {"id": "item31", "emoji": "🦋",  "name": "[RESHADE] MMJ", "price": 35,  "role_id": 1449724755086147696, "category": "🎨 ReShade"},
+    {"id": "item32", "emoji": "🐇",  "name": "[RESHADE] 𝖡𝖠𝖡𝖸 𝖦", "price": 40,  "role_id": 1449725249036877874, "category": "🎨 ReShade"},
+    {"id": "item33", "emoji": "🍥",  "name": "[RESHADE] ✦colour﹒₊˚੭", "price": 40,  "role_id": 1449726152456409139, "category": "🎨 ReShade"},
 ]
 
 # =================================================================
@@ -350,7 +359,7 @@ def update_gist_hwid(target_key, new_hwid):
                     return False, f"⚠️ คีย์นี้ถูกผูก HWID ไปแล้ว! ({product_name})"
                 
                 final_content = "\n".join(new_lines)
-                # 👇 แก้ตรงนี้: ใช้ InputFileContent จาก github library (ไม่ใช่ discord)
+                # ใช้ InputFileContent จาก library github
                 gist.edit(files={current_filename: InputFileContent(final_content)})
                 return True, f"✅ **SUCCESS:** ผูก HWID เรียบร้อย!\nสินค้า: `{product_name}`"
 
@@ -570,7 +579,7 @@ async def update_all_user_logs(bot):
         await update_user_log(bot, uid)
         await asyncio.sleep(0.5)
 
-# --- SHOPPING UI ---
+# --- SHOPPING UI (NEW APP STORE STYLE) ---
 
 class ProductConfirmView(discord.ui.View):
     def __init__(self, product, user_id):
@@ -618,50 +627,122 @@ class ProductConfirmView(discord.ui.View):
         if interaction.user.id == self.user_id:
             await interaction.response.edit_message(content="❌ Transaction Cancelled", embed=None, view=None)
 
-class ProductButton(discord.ui.Button):
-    def __init__(self, product, row_index):
-        name_display = f"⠀{product['name'][:25]}⠀" 
-        super().__init__(style=discord.ButtonStyle.secondary, label=name_display, emoji=product['emoji'], row=row_index)
+# 1. หน้าแสดงรายละเอียดสินค้า (หน้าสุดท้าย)
+class ProductDetailView(discord.ui.View):
+    def __init__(self, product):
+        super().__init__(timeout=None)
         self.product = product
 
+    @discord.ui.button(label="🛒 BUY NOW", style=discord.ButtonStyle.success, emoji="💳")
+    async def buy(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            embed=discord.Embed(description=f"กำลังสั่งซื้อ: **{self.product['name']}**", color=SUCCESS_COLOR),
+            view=ProductConfirmView(self.product, interaction.user.id),
+            ephemeral=True
+        )
+
+    @discord.ui.button(label="🔙 BACK TO LIST", style=discord.ButtonStyle.secondary)
+    async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(
+            embed=discord.Embed(
+                title=f"📂 หมวดหมู่: {self.product['category']}", 
+                description="🔻 **เลือกสินค้าจากเมนูด้านล่าง:**", 
+                color=THEME_COLOR
+            ),
+            view=ProductSelectView(self.product['category'])
+        )
+
+# 2. หน้าเลือกสินค้าในหมวดนั้นๆ (หน้ารอง)
+class ProductDropdown(discord.ui.Select):
+    def __init__(self, category):
+        self.filtered_products = [p for p in PRODUCTS if p['category'] == category]
+        
+        options = []
+        for prod in self.filtered_products:
+            options.append(discord.SelectOption(
+                label=prod["name"][:95], 
+                description=f"💵 ราคา: {prod['price']} THB",
+                emoji=prod["emoji"],
+                value=prod["id"]
+            ))
+        
+        super().__init__(
+            placeholder=f"🔍 เลือกสินค้าในหมวด {category}...", 
+            min_values=1, 
+            max_values=1, 
+            options=options
+        )
+
     async def callback(self, interaction: discord.Interaction):
-        embed = discord.Embed(title=f"{self.product['emoji']} {self.product['name']}", color=ACCENT_COLOR)
-        embed.add_field(name="Price", value=f"```fix\n฿ {self.product['price']:.2f}```", inline=True)
-        embed.add_field(name="Info", value="Auto Role / Fast Delivery", inline=True)
-        await interaction.response.send_message(embed=embed, view=ProductConfirmView(self.product, interaction.user.id), ephemeral=True)
+        selected_id = self.values[0]
+        product = next((p for p in self.filtered_products if p["id"] == selected_id), None)
+        
+        embed = discord.Embed(title=f"{product['emoji']} {product['name']}", color=ACCENT_COLOR)
+        embed.description = (
+            "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏷️ **CATEGORY:** `{product['category']}`\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "✨ **DESCRIPTION:**\n"
+            "> สินค้าคุณภาพ ส่งมอบทันทีด้วยระบบอัตโนมัติ\n"
+            "> รับประกันความพึงพอใจ 100%\n"
+        )
+        embed.add_field(name="💵 PRICE", value=f"```fix\n฿ {product['price']:.2f}```", inline=True)
+        embed.add_field(name="📦 STOCK", value="`✅ Ready`", inline=True)
+        embed.set_image(url=SHOP_BANNER_URL)
+        embed.set_footer(text=f"Product ID: {product['id']}")
+        
+        await interaction.response.edit_message(embed=embed, view=ProductDetailView(product))
 
-class ProductGridBrowser(discord.ui.View):
-    def __init__(self, products, page=0):
+class ProductSelectView(discord.ui.View):
+    def __init__(self, category):
         super().__init__(timeout=None)
-        self.products = products
-        self.page = page
-        self.COLUMNS = 2
-        self.ROWS = 4
-        self.ITEMS_PER_PAGE = self.COLUMNS * self.ROWS 
-        start = page * self.ITEMS_PER_PAGE
-        end = start + self.ITEMS_PER_PAGE
-        current_items = products[start:end]
-        for i, prod in enumerate(current_items):
-            row_idx = i // self.COLUMNS 
-            self.add_item(ProductButton(prod, row_idx))
-        if page > 0:
-            self.add_item(self.create_nav_button("⬅️ Prev", "prev_page", discord.ButtonStyle.primary))
-        total_pages = (len(products) - 1) // self.ITEMS_PER_PAGE + 1
-        self.add_item(self.create_nav_button(f"Page {page + 1}/{total_pages}", "info", discord.ButtonStyle.gray, disabled=True))
-        if end < len(products):
-            self.add_item(self.create_nav_button("Next ➡️", "next_page", discord.ButtonStyle.primary))
+        self.add_item(ProductDropdown(category))
+        
+    @discord.ui.button(label="🏠 MAIN MENU", style=discord.ButtonStyle.danger, row=1)
+    async def home(self, interaction: discord.Interaction, button: discord.ui.Button):
+        embed = discord.Embed(
+            title="🗂️ SHOP CATEGORIES",
+            description="📂 **กรุณาเลือกหมวดหมู่สินค้า:**",
+            color=THEME_COLOR
+        )
+        if SHOP_BANNER_URL.startswith("http"): embed.set_thumbnail(url=SHOP_BANNER_URL)
+        await interaction.response.edit_message(embed=embed, view=CategorySelectView())
 
-    def create_nav_button(self, label, cid, style, disabled=False):
-        btn = discord.ui.Button(label=label, custom_id=cid, style=style, disabled=disabled, row=4)
-        btn.callback = self.nav_callback
-        return btn
+# 3. หน้าเลือกหมวดหมู่ (หน้าแรกสุด)
+class CategoryDropdown(discord.ui.Select):
+    def __init__(self):
+        categories = sorted(list(set(p['category'] for p in PRODUCTS)))
+        
+        options = []
+        for cat in categories:
+            options.append(discord.SelectOption(
+                label=cat, 
+                description="คลิกเพื่อดูสินค้าภายในหมวดนี้",
+                emoji="📁"
+            ))
+            
+        super().__init__(
+            placeholder="🔻 กรุณาเลือกหมวดหมู่สินค้า... (Select Category)",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
 
-    async def nav_callback(self, interaction: discord.Interaction):
-        custom_id = interaction.data['custom_id']
-        if custom_id == "next_page":
-            await interaction.response.edit_message(view=ProductGridBrowser(self.products, self.page + 1))
-        elif custom_id == "prev_page":
-            await interaction.response.edit_message(view=ProductGridBrowser(self.products, self.page - 1))
+    async def callback(self, interaction: discord.Interaction):
+        selected_cat = self.values[0]
+        await interaction.response.edit_message(
+            embed=discord.Embed(
+                title=f"📂 หมวดหมู่: {selected_cat}", 
+                description="🔻 **เลือกสินค้าจากเมนูด้านล่าง:**", 
+                color=THEME_COLOR
+            ),
+            view=ProductSelectView(selected_cat)
+        )
+
+class CategorySelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(CategoryDropdown())
 
 # --- REDEEM UI & VIEWS ---
 
@@ -768,11 +849,15 @@ class MainShopView(discord.ui.View):
 
     @discord.ui.button(label="BROWSE PRODUCTS", style=discord.ButtonStyle.primary, emoji="🛒", custom_id="browse_btn", row=0)
     async def browse(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(
-            embed=discord.Embed(description="📂 **Select a product below:**", color=THEME_COLOR),
-            view=ProductGridBrowser(PRODUCTS), 
-            ephemeral=True
+        embed = discord.Embed(
+            title="🗂️ SHOP CATEGORIES | หมวดหมู่สินค้า",
+            description="📂 **กรุณาเลือกประเภทสินค้าที่คุณต้องการจากเมนูด้านล่าง**\n(Select a category to view products)",
+            color=THEME_COLOR
         )
+        if SHOP_BANNER_URL.startswith("http"): embed.set_thumbnail(url=SHOP_BANNER_URL)
+        
+        # เรียกใช้หน้าเลือกหมวดหมู่ (หน้าแรกของระบบใหม่)
+        await interaction.response.send_message(embed=embed, view=CategorySelectView(), ephemeral=True)
 
     @discord.ui.button(label="TOP UP", style=discord.ButtonStyle.success, emoji="💳", custom_id="topup_btn", row=0)
     async def topup(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -909,6 +994,7 @@ async def setup_dashboard(interaction: discord.Interaction):
 @bot.tree.command(name="setup_shop")
 async def setup_shop(interaction):
     await interaction.response.defer(ephemeral=True)
+    embed = discord.Embed(title="⚡ NEW PROJECT!!", color=THEME_COLOR)
     embed.description = (
         "# 🕹️ ＷＥＬＣＯＭＥ　ＴＯ　ＴＨＥ　ＮＥＷ　ＰＲＯＪＥＣＴ\n"
         "> *Insert coin to continue... Status: ONLINE! 🟢*\n\n"
@@ -937,7 +1023,8 @@ async def setup_shop(interaction):
 async def setup_redeem(interaction):
     if interaction.channel_id != REDEEM_CHANNEL_ID:
         return await interaction.response.send_message("❌ ผิดห้อง", ephemeral=True)
-        embed.description = (
+    embed = discord.Embed(title="🔐 REDEEM CENTER", color=0xff0055) 
+    embed.description = (
         "# 📥 ＩＴＥＭ　ＲＥＤＥＥＭ　ＺＯＮＥ\n"
         "> *Accessing database... Status: WAITING FOR KEY... [REC]* 🔴\n\n"
         "จุดแลกเปลี่ยนไอเทมและรางวัล ระบบอัตโนมัติความเร็วสูง\n"
@@ -1037,4 +1124,3 @@ async def sync(ctx):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
-
