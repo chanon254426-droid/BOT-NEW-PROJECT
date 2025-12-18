@@ -1025,3 +1025,4 @@ async def sync(ctx):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
+
