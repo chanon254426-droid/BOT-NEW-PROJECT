@@ -9,6 +9,7 @@ import traceback
 import re
 import uuid
 import asyncio
+import time
 from datetime import datetime, timedelta
 from myserver import server_on
 from github import Github, InputFileContent
@@ -26,7 +27,24 @@ EASYSLIP_API_KEY = '12710681-efd6-412f-bce7-984feb9aa4cc'.strip()
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 
 # --------------------------------------------------------
-# 🔑 ZONE: ตั้งค่า ID ห้อง
+# 🤖 AUTO HWID SYSTEM CONFIG (ตั้งค่าระบบออโต้)
+# --------------------------------------------------------
+# ใส่ ID ห้อง Log ที่บอทจะคอยดักฟัง (ห้องที่ Webhook ส่ง Embed เข้ามา)
+AUTO_BIND_LISTEN_CHANNELS = [
+    1451230696181071932, # ตัวอย่าง: ห้อง LOG-CMD-REBORNKILL
+    1451230804209434855, # ตัวอย่าง: ห้อง LOG-CMD-ALLWEAPON
+    1451230747074494526, # ตัวอย่าง: ห้อง LOG-CMD-NEWCLEAN
+]
+
+# ห้องสำหรับแจ้งเตือนแอดมินเมื่อ Auto Bind สำเร็จ
+AUTO_BIND_NOTIFY_CHANNEL = 1451241871979577537 
+
+# ตั้งค่ากัน Spam (ถ้าลูกค้ากดรัวๆ บอทจะไม่อัปเดต Gist ซ้ำภายในเวลานี้)
+SPAM_COOLDOWN = 300 # หน่วยวินาที (300 วิ = 5 นาที)
+spam_check_cache = {}
+
+# --------------------------------------------------------
+# 🔑 ZONE: ตั้งค่า ID ห้อง (ระบบร้านค้า)
 # --------------------------------------------------------
 
 # 1. ห้องหน้าร้าน & ลูกค้าใช้งาน
@@ -60,11 +78,11 @@ SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/14
 
 # 🔥 ชื่อผู้รับเงิน
 EXPECTED_NAMES = [
-    'ชานนท์ ขันทอง',    
-    'ชานนท์',          
+    'ชานนท์ ขันทอง',     
+    'ชานนท์',           
     'chanon khantong', 
-    'chanon',          
-    'khantong'         
+    'chanon',           
+    'khantong'          
 ]
 MIN_AMOUNT = 1.00
 
@@ -310,7 +328,7 @@ def check_slip_easyslip(image_url):
     except Exception as e:
         return False, 0, None, f"System Error: {str(e)}"
 
-# 🔥 GIST: ระบบแก้ไฟล์อัจฉริยะ (วนลูปหาไฟล์สินค้าเอง)
+# 🔥 GIST: ระบบแก้ไฟล์อัจฉริยะ (AUTO + MANUAL)
 def update_gist_hwid(target_key, new_hwid):
     try:
         g = Github(GITHUB_TOKEN)
@@ -333,7 +351,7 @@ def update_gist_hwid(target_key, new_hwid):
 
             new_lines = []
             found = False
-            already_bind = False
+            status_code = "NOT_FOUND" # SUCCESS, ALREADY_MATCH, CONFLICT
             
             for line in content.splitlines():
                 clean_line = line.strip()
@@ -347,26 +365,34 @@ def update_gist_hwid(target_key, new_hwid):
                     old_hwid = parts_line[1].strip() if len(parts_line) > 1 else ""
                     
                     if old_hwid == "":
+                        # กรณีที่ 1: ยังไม่มี HWID -> บันทึก
                         new_lines.append(f"{current_key_in_file},{new_hwid}")
-                    else:
+                        status_code = "SUCCESS"
+                    elif old_hwid == new_hwid:
+                        # กรณีที่ 2: มี HWID แล้ว และตรงกัน (ลูกค้าเดิม)
                         new_lines.append(clean_line)
-                        already_bind = True
+                        status_code = "MATCH"
+                    else:
+                        # กรณีที่ 3: มี HWID แล้ว แต่ไม่ตรง (Conflict)
+                        new_lines.append(clean_line)
+                        status_code = "CONFLICT"
                 else:
                     new_lines.append(clean_line)
             
             if found:
-                if already_bind:
-                    return False, f"⚠️ คีย์นี้ถูกผูก HWID ไปแล้ว! ({product_name})"
-                
-                final_content = "\n".join(new_lines)
-                # ใช้ InputFileContent จาก library github
-                gist.edit(files={current_filename: InputFileContent(final_content)})
-                return True, f"✅ **SUCCESS:** ผูก HWID เรียบร้อย!\nสินค้า: `{product_name}`"
+                if status_code == "SUCCESS":
+                    final_content = "\n".join(new_lines)
+                    gist.edit(files={current_filename: InputFileContent(final_content)})
+                    return True, "SUCCESS", product_name
+                elif status_code == "MATCH":
+                    return True, "MATCH", product_name
+                elif status_code == "CONFLICT":
+                    return False, "CONFLICT", product_name
 
-        return False, f"❌ ไม่พบคีย์ `{target_key}` ในระบบทุกสินค้า"
+        return False, "NOT_FOUND", None
 
     except Exception as e:
-        return False, f"GitHub Error: {str(e)}"
+        return False, f"ERROR: {str(e)}", None
 
 # --- REDEEM LOGIC ---
 def fetch_available_key(pastebin_url):
@@ -419,8 +445,22 @@ class HwidInputModal(discord.ui.Modal, title="🔗 BIND HWID"):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         hwid_val = self.hwid.value.strip()
-        success, msg = update_gist_hwid(self.target_key, hwid_val)
-        color = discord.Color.green() if success else discord.Color.red()
+        success, status, pname = update_gist_hwid(self.target_key, hwid_val)
+        
+        msg = ""
+        color = discord.Color.green()
+        if success and status == "SUCCESS":
+            msg = f"✅ **SUCCESS:** ผูก HWID เรียบร้อย!\nสินค้า: `{pname}`"
+        elif success and status == "MATCH":
+            msg = f"⚠️ **MATCH:** HWID นี้ถูกผูกกับคีย์นี้อยู่แล้ว"
+            color = discord.Color.orange()
+        elif not success and status == "CONFLICT":
+            msg = f"❌ **CONFLICT:** คีย์นี้ถูกผูกกับ HWID อื่นไปแล้ว!"
+            color = discord.Color.red()
+        else:
+            msg = f"❌ Error: {status}"
+            color = discord.Color.red()
+
         await interaction.followup.send(embed=discord.Embed(description=msg, color=color), ephemeral=True)
 
 # 2. ปุ่ม BIND HWID (อยู่ใต้ Embed รายละเอียดออเดอร์)
@@ -1002,9 +1042,9 @@ async def setup_shop(interaction):
         "พร้อมให้บริการตลอด 24 ชั่วโมง ไม่มีวันปิดเครื่อง!\n\n"
         "**📺 ＭＡＩＮ　ＭＥＮＵ　（เมนูหลัก）**\n"
         "```ini\n"
-        "[1] 💿 INSERT COIN   : เติมเงินเครดิต (Top Up)\n"
-        "[2] 🍿 SELECT GAME   : เลือกซื้อสินค้า (Browse Shop)\n"
-        "[3] 📟 PLAYER STATS  : เช็คยอดเงินคงเหลือ (Profile)\n"
+        "[1] 💿 INSERT COIN    : เติมเงินเครดิต (Top Up)\n"
+        "[2] 🍿 SELECT GAME    : เลือกซื้อสินค้า (Browse Shop)\n"
+        "[3] 📟 PLAYER STATS   : เช็คยอดเงินคงเหลือ (Profile)\n"
         "```\n"
         "**🥤 ＳＥＲＶＩＣＥ　ＧＵＩＤＥ （วิธีใช้งาน）**\n"
         "1. กดปุ่ม `💳 TOP UP` เพื่อหยอดเหรียญ (เติมเงินผ่าน QR)\n"
@@ -1032,9 +1072,9 @@ async def setup_redeem(interaction):
         "**👾 ＨＯＷ　ＴＯ　ＵＳＥ （วิธีใช้งาน）**\n"
         "```ini\n"
         "[1] 🎫 CHECK RECEIPT : ดูเลข Receipt ID จากสลิป (เช่น #BA5590)\n"
-        "[2] 🔘 PUSH START    : กดปุ่ม \"🎁 กดเพื่อรับคีย์\" ด้านล่าง\n"
-        "[3] ⌨️ ENTER CODE    : กรอกเลข Order ลงในช่องให้ถูกต้อง\n"
-        "[4] 📨 GET ITEM      : เช็คกล่องจดหมาย (DM) เพื่อรับของ\n"
+        "[2] 🔘 PUSH START     : กดปุ่ม \"🎁 กดเพื่อรับคีย์\" ด้านล่าง\n"
+        "[3] ⌨️ ENTER CODE     : กรอกเลข Order ลงในช่องให้ถูกต้อง\n"
+        "[4] 📨 GET ITEM       : เช็คกล่องจดหมาย (DM) เพื่อรับของ\n"
         "```\n"
         "**⚠️ ＳＹＳＴＥＭ　ＷＡＲＮＩＮＧ （ข้อควรระวัง）**\n"
         "• **1 Order = 1 Life** (รับได้เพียง 1 ครั้งต่อ 1 ออเดอร์เท่านั้น)\n"
@@ -1059,7 +1099,77 @@ async def add_money(interaction, user: discord.Member, amount: float):
 
 @bot.event
 async def on_message(message):
-    if message.author.bot: return
+    if message.author.id == bot.user.id: return # Ignore self (only bot itself)
+
+    # -------------------------------------------------------------
+    # 🤖 AUTO HWID BINDING SYSTEM (New)
+    # -------------------------------------------------------------
+    if message.channel.id in AUTO_BIND_LISTEN_CHANNELS:
+        if message.embeds:
+            embed = message.embeds[0]
+            target_key = None
+            target_hwid = None
+            
+            # 1. Parsing Embed
+            for field in embed.fields:
+                fname = field.name.lower()
+                fval = field.value.strip()
+                
+                if "license key" in fname or "key" in fname:
+                    target_key = fval
+                elif "hwid" in fname:
+                    target_hwid = fval
+            
+            # 2. Logic Process
+            if target_key and target_hwid:
+                # 3. Spam Cooldown Check
+                current_time = time.time()
+                last_time = spam_check_cache.get(target_key, 0)
+                
+                if current_time - last_time < SPAM_COOLDOWN:
+                    print(f"⏳ Skill Cooldown for {target_key} (Anti-Spam)")
+                    return 
+
+                # 4. Update Gist
+                print(f"🔄 Auto Binding: {target_key} -> {target_hwid}")
+                success, status, prod_name = update_gist_hwid(target_key, target_hwid)
+                spam_check_cache[target_key] = current_time # Update timer
+
+                # 5. Notify Admin
+                notify_channel = bot.get_channel(AUTO_BIND_NOTIFY_CHANNEL)
+                
+                if success and status == "SUCCESS" and notify_channel:
+                    # Case: Bind Success
+                    embed_log = discord.Embed(title="🔗 AUTO BIND SUCCESS", color=discord.Color.green())
+                    embed_log.description = (
+                        f"**PRODUCT:** `{prod_name}`\n"
+                        f"**KEY:** `{target_key}`\n"
+                        f"**HWID:** `{target_hwid}`\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        "⚠️ *Note: Gist may take 5-10 mins to update cache.*"
+                    )
+                    embed_log.set_footer(text="System Automated Action")
+                    await notify_channel.send(embed=embed_log)
+                    
+                elif not success and status == "CONFLICT" and notify_channel:
+                    # Case: Conflict (Hacked/Shared)
+                    embed_warn = discord.Embed(title="🚨 SECURITY ALERT (HWID MISMATCH)", color=discord.Color.red())
+                    embed_warn.description = (
+                        f"**PRODUCT:** `{prod_name}`\n"
+                        f"**KEY:** `{target_key}`\n"
+                        f"**NEW HWID:** `{target_hwid}`\n"
+                        "❌ *System blocked auto-bind because this key is used by another PC.*"
+                    )
+                    await notify_channel.send(embed=embed_warn)
+                    
+                elif success and status == "MATCH":
+                    # Case: Already matched (Silent)
+                    print(f"✅ Key {target_key} matches existing HWID. No action needed.")
+        return # End process for this channel
+
+    # -------------------------------------------------------------
+    # 💳 SLIP CHECKING SYSTEM
+    # -------------------------------------------------------------
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
         try:
             img_url = message.attachments[0].url
@@ -1106,6 +1216,7 @@ async def on_message(message):
                 await message.delete()
         except Exception as e:
             print(f"Error: {e}")
+    
     await bot.process_commands(message)
 
 # =================================================================
