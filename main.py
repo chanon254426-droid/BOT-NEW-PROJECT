@@ -11,7 +11,7 @@ import uuid
 import asyncio
 from datetime import datetime, timedelta
 from myserver import server_on
-from github import Github
+from github import Github, InputFileContent
 
 # =================================================================
 # ⚙️ CONFIGURATION (ตั้งค่าระบบ)
@@ -350,7 +350,8 @@ def update_gist_hwid(target_key, new_hwid):
                     return False, f"⚠️ คีย์นี้ถูกผูก HWID ไปแล้ว! ({product_name})"
                 
                 final_content = "\n".join(new_lines)
-                gist.edit(files={current_filename: discord.InputFileContent(final_content)})
+                # 👇 แก้ตรงนี้: ใช้ InputFileContent จาก github library (ไม่ใช่ discord)
+                gist.edit(files={current_filename: InputFileContent(final_content)})
                 return True, f"✅ **SUCCESS:** ผูก HWID เรียบร้อย!\nสินค้า: `{product_name}`"
 
         return False, f"❌ ไม่พบคีย์ `{target_key}` ในระบบทุกสินค้า"
@@ -1025,4 +1026,3 @@ async def sync(ctx):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
-
