@@ -29,27 +29,20 @@ GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 # 🔑 ZONE: ตั้งค่า ID ห้อง
 # --------------------------------------------------------
 
-# 🔥 [สำคัญ] ใส่ ID ห้องที่โปรแกรม GHOSTX ส่ง Log Login เข้ามา
-LISTEN_CHANNELS = [
-    1434154279068762116,  # ID ห้อง LOG-CMD-REBORNKILL
-    1450130826837754091,  # ID ห้อง LOG-CMD-NEWCLEAN
-    1450130960053047347   # ID ห้อง LOG-CMD-ALLWEAPON
-]
-
 # 1. ห้องหน้าร้าน & ลูกค้าใช้งาน
-SHOP_CHANNEL_ID = 1416797606180552714       
-SLIP_CHANNEL_ID = 1416797464350167090       
-REDEEM_CHANNEL_ID = 1449749949918089289     
+SHOP_CHANNEL_ID = 1416797606180552714       # ห้องพิมพ์ /setup_shop (หน้าร้าน)
+SLIP_CHANNEL_ID = 1416797464350167090       # ห้องลูกค้าส่งสลิปโอนเงิน
+REDEEM_CHANNEL_ID = 1449749949918089289     # ห้องพิมพ์ /setup_redeem (แลกคีย์)
 
 # 2. ห้อง LOGS หลังบ้าน (แอดมิน)
-PURCHASE_LOG_ID = 1450487180416778321       
-SLIP_LOG_ID = 1444390933297631512           
-ADD_MONEY_LOG_ID = 1450470356979683328      
-REDEEM_LOG_ID = 1450457258663215146         
+PURCHASE_LOG_ID = 1450487180416778321       # 🔒:ประวัติการซื้อ
+SLIP_LOG_ID = 1444390933297631512           # 🔒:ประวัติสลีปโอนเงิน
+ADD_MONEY_LOG_ID = 1450470356979683328      # 🔒:ประวัติเพิ่มเงิน
+REDEEM_LOG_ID = 1450457258663215146         # 🔒:ประวัติแลกคีย์ (Log การดึงคีย์)
 
 # 3. ห้อง DATABASE & DASHBOARD
-DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423 
-BALANCE_LOG_ID = 1444662604940181667           
+DASHBOARD_CMD_CHANNEL_ID = 1444662199674081423 # ห้องพิมพ์ /setup_dashboard
+BALANCE_LOG_ID = 1444662604940181667           # 🔒:ห้องเก็บยอดเงินรวม
 
 # --------------------------------------------------------
 
@@ -68,10 +61,10 @@ SUCCESS_GIF_URL = 'https://cdn.discordapp.com/attachments/1233098937632817233/14
 # 🔥 ชื่อผู้รับเงิน
 EXPECTED_NAMES = [
     'ชานนท์ ขันทอง',    
-    'ชานนท์',           
+    'ชานนท์',          
     'chanon khantong', 
-    'chanon',           
-    'khantong'          
+    'chanon',          
+    'khantong'         
 ]
 MIN_AMOUNT = 1.00
 
@@ -84,7 +77,7 @@ PRODUCT_LINKS = {
 }
 
 # =================================================================
-# 🛍️ PRODUCTS DATA
+# 🛍️ PRODUCTS DATA (เพิ่มหมวดหมู่ Category)
 # =================================================================
 PRODUCTS = [
     # หมวด: VIP & DONATE
@@ -353,7 +346,7 @@ def update_gist_hwid(target_key, new_hwid):
                     found = True
                     old_hwid = parts_line[1].strip() if len(parts_line) > 1 else ""
                     
-                    if old_hwid == "" or old_hwid == "RESET": # ✅ เพิ่มเงื่อนไข ถ้าเป็น RESET ก็ให้แก้ทับ
+                    if old_hwid == "":
                         new_lines.append(f"{current_key_in_file},{new_hwid}")
                     else:
                         new_lines.append(clean_line)
@@ -363,13 +356,12 @@ def update_gist_hwid(target_key, new_hwid):
             
             if found:
                 if already_bind:
-                    # ถ้า HWID เดิมไม่ตรงกับอันใหม่ แปลว่ามีคนใช้อยู่แล้ว
-                    return False, f"⚠️ คีย์นี้มีเจ้าของแล้ว! ({product_name})"
+                    return False, f"⚠️ คีย์นี้ถูกผูก HWID ไปแล้ว! ({product_name})"
                 
                 final_content = "\n".join(new_lines)
                 # ใช้ InputFileContent จาก library github
                 gist.edit(files={current_filename: InputFileContent(final_content)})
-                return True, f"✅ **AUTO BIND:** ผูก HWID สำเร็จ!\nสินค้า: `{product_name}`"
+                return True, f"✅ **SUCCESS:** ผูก HWID เรียบร้อย!\nสินค้า: `{product_name}`"
 
         return False, f"❌ ไม่พบคีย์ `{target_key}` ในระบบทุกสินค้า"
 
@@ -731,8 +723,8 @@ class CategoryDropdown(discord.ui.Select):
             
         super().__init__(
             placeholder="🔻 กรุณาเลือกหมวดหมู่สินค้า... (Select Category)",
-            min_values=1, 
-            max_values=1, 
+            min_values=1,
+            max_values=1,
             options=options
         )
 
@@ -1042,7 +1034,7 @@ async def setup_redeem(interaction):
         "[1] 🎫 CHECK RECEIPT : ดูเลข Receipt ID จากสลิป (เช่น #BA5590)\n"
         "[2] 🔘 PUSH START    : กดปุ่ม \"🎁 กดเพื่อรับคีย์\" ด้านล่าง\n"
         "[3] ⌨️ ENTER CODE    : กรอกเลข Order ลงในช่องให้ถูกต้อง\n"
-        "[4] 📨 GET ITEM       : เช็คกล่องจดหมาย (DM) เพื่อรับของ\n"
+        "[4] 📨 GET ITEM      : เช็คกล่องจดหมาย (DM) เพื่อรับของ\n"
         "```\n"
         "**⚠️ ＳＹＳＴＥＭ　ＷＡＲＮＩＮＧ （ข้อควรระวัง）**\n"
         "• **1 Order = 1 Life** (รับได้เพียง 1 ครั้งต่อ 1 ออเดอร์เท่านั้น)\n"
@@ -1067,40 +1059,7 @@ async def add_money(interaction, user: discord.Member, amount: float):
 
 @bot.event
 async def on_message(message):
-    if message.author.bot:
-        # 🔥🔥🔥 ส่วนสำคัญ: ดักจับ Log Login เพื่อ Auto Bind HWID 🔥🔥🔥
-        if message.channel.id == LOGIN_LOG_ID and message.embeds:
-            try:
-                embed = message.embeds[0]
-                # เช็คหัวข้อว่าเป็น Login Success ไหม
-                if "LOGIN SUCCESSFUL" in str(embed.title).upper():
-                    key = None
-                    hwid = None
-                    
-                    # วนลูปหา Field ที่เป็น Key และ HWID
-                    for field in embed.fields:
-                        if "License Key" in field.name:
-                            # ลบ ``` ออกจาก Value
-                            key = field.value.replace("```", "").strip()
-                        if "HWID" in field.name:
-                            hwid = field.value.replace("```", "").strip()
-                    
-                    if key and hwid:
-                        # ส่งไปอัปเดตที่ GitHub Gist
-                        success, msg = update_gist_hwid(key, hwid)
-                        
-                        # ตอบกลับในห้อง Log ว่าทำอะไรไปบ้าง
-                        if success:
-                            await message.channel.send(f"🤖 **[AUTO-BIND SYSTEM]**\n✅ ผูก HWID สำเร็จสำหรับคีย์: `{key}`", reference=message)
-                        else:
-                            # ถ้าผูกไม่ได้ (เช่น มีคนใช้อยู่แล้ว) ก็แจ้งเตือน
-                            if "เจ้าของแล้ว" in msg:
-                                await message.channel.send(f"⚠️ **[SECURITY ALERT]** คีย์นี้ถูกใช้ซ้ำจากเครื่องอื่น!\nKey: `{key}`", reference=message)
-            except Exception as e:
-                print(f"Auto Bind Error: {e}")
-        return
-
-    # ส่วนเช็คสลิปเดิม
+    if message.author.bot: return
     if message.channel.id == SLIP_CHANNEL_ID and message.attachments:
         try:
             img_url = message.attachments[0].url
@@ -1165,4 +1124,3 @@ async def sync(ctx):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
-
