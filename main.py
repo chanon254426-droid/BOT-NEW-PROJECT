@@ -31,9 +31,12 @@ GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 # --------------------------------------------------------
 # ใส่ ID ห้อง Log ที่บอทจะคอยดักฟัง (ห้องที่ Webhook ส่ง Embed เข้ามา)
 AUTO_BIND_LISTEN_CHANNELS = [
-    1451230696181071932, # ตัวอย่าง: ห้อง LOG-CMD-REBORNKILL
-    1451230804209434855, # ตัวอย่าง: ห้อง LOG-CMD-ALLWEAPON
-    1451230747074494526, # ตัวอย่าง: ห้อง LOG-CMD-NEWCLEAN
+    1451230696181071932, # ห้อง LOG-CMD-REBORNKILL
+    1451230804209434855, # ห้อง LOG-CMD-ALLWEAPON
+    1451230747074494526, # ห้อง LOG-CMD-NEWCLEAN
+    1451231047080476883, # ห้อง LOG-𝟨𝟢𝟩𝖤𝖳𝟪𝖠𝖢𝖪
+    1451232125658468513, # ห้อง LOG-𝖥𝖱𝖠𝖬𝖤𝖲𝖸𝖭𝖢
+    1451776638915182734, # ห้อง LOG-SCAN
 ]
 
 # ห้องสำหรับแจ้งเตือนแอดมินเมื่อ Auto Bind สำเร็จ
@@ -329,7 +332,6 @@ def check_slip_easyslip(image_url):
         return False, 0, None, f"System Error: {str(e)}"
 
 # 🔥 GIST: ระบบแก้ไฟล์อัจฉริยะ (AUTO + MANUAL)
-# 🔥 GIST: ระบบแก้ไฟล์อัจฉริยะ (AUTO + MANUAL)
 def update_gist_hwid(target_key, new_hwid):
     print(f"🔄 Processing Auto Bind: Key={target_key}, HWID={new_hwid}") # Debug
     try:
@@ -475,7 +477,7 @@ class HwidInputModal(discord.ui.Modal, title="🔗 BIND HWID"):
         msg = ""
         color = discord.Color.green()
         if success and status == "SUCCESS":
-            msg = f"✅ **SUCCESS:** ผูก HWID เรียบร้อย!\nสินค้า: `{pname}`"
+            msg = f"✅ **SUCCESS:** ล็อค HWID เรียบร้อย!\nสินค้า: `{pname}`"
         elif success and status == "MATCH":
             msg = f"⚠️ **MATCH:** HWID นี้ถูกผูกกับคีย์นี้อยู่แล้ว"
             color = discord.Color.orange()
@@ -1259,4 +1261,3 @@ async def sync(ctx):
 
 server_on()
 bot.run(os.getenv('TOKEN'))
-
